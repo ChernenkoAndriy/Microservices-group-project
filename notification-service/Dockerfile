@@ -2,18 +2,30 @@
 FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /build
 
-COPY . .
+COPY gradlew .
+COPY gradle gradle
+COPY build.gradle settings.gradle ./
 
-RUN chmod +x gradlew && ./gradlew bootJar --no-daemon -x test
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
+
+COPY src ./src
+RUN ./gradlew bootJar --no-daemon -x test
+RUN java -Djarmode=tools -jar build/libs/*-SNAPSHOT.jar extract --layers --launcher --destination extracted
 
 # --- Stage 2: Runtime ---
 FROM eclipse-temurin:25-jre-alpine AS runner
 WORKDIR /app
 
-COPY --from=builder --chown=nobody:nobody /build/build/libs/*-SNAPSHOT.jar app.jar
+EXPOSE 8080
 
-USER nobody
+RUN addgroup --system --gid 10001 spring && \
+    adduser --system --uid 10001 --ingroup spring spring
 
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport -XX:+ExitOnOutOfMemoryError"
+COPY --chown=spring:spring --from=builder /build/extracted/dependencies/ ./
+COPY --chown=spring:spring --from=builder /build/extracted/spring-boot-loader/ ./
+COPY --chown=spring:spring --from=builder /build/extracted/snapshot-dependencies/ ./
+COPY --chown=spring:spring --from=builder /build/extracted/application/ ./
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+USER 10001:10001
+
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75.0", "-XX:+UseContainerSupport", "-XX:+ExitOnOutOfMemoryError", "org.springframework.boot.loader.launch.JarLauncher"]
