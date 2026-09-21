@@ -1,3 +1,11 @@
+server:
+  port: ${SERVER_PORT:8084}
+
 spring:
   application:
     name: recommendation-service
+  datasource:
+    url: ${CLICKHOUSE_URL:jdbc:ch:http://recommendation-db:8123/spotty_analytics_db}?compress=0
+    username: ${CLICKHOUSE_USER:spotty_clickhouse_user}
+    password: ${CLICKHOUSE_PASSWORD:your_secure_clickhouse_password}
+    driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
