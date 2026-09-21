@@ -4,8 +4,7 @@ WORKDIR /build
 
 COPY . .
 
-# Виправляємо закінчення рядків Windows (CRLF -> LF) та робимо файл виконуваним
-RUN sed -i 's/\r$//' gradlew && chmod +x gradlew && ./gradlew bootJar --no-daemon -x test
+RUN chmod +x gradlew && ./gradlew bootJar --no-daemon -x test
 
 # --- Stage 2: Runtime ---
 FROM eclipse-temurin:25-jre-alpine AS runner
