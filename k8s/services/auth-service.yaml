@@ -49,22 +49,28 @@ spec:
             limits:
               cpu: 750m
               memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 20
+
           livenessProbe:
             httpGet:
-              path: /actuator/health/liveness
-              port: 8081
-            initialDelaySeconds: 40
+              path: /actuator/health
+              port: http
             periodSeconds: 15
-            timeoutSeconds: 5
             failureThreshold: 3
+
           readinessProbe:
             httpGet:
-              path: /actuator/health/readiness
-              port: 8081
-            initialDelaySeconds: 25
+              path: /actuator/health
+              port: http
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            failureThreshold: 2
+
 ---
 apiVersion: v1
 kind: Service
@@ -78,5 +84,5 @@ spec:
     app: auth-service
   ports:
     - port: 8081
-      targetPort: 8081
+      targetPort: http
       name: http

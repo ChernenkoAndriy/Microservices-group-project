@@ -3,6 +3,9 @@ kind: ConfigMap
 metadata:
   name: spotty-config
 data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: "INFO"
+
   AUTH_DB_NAME: "spotty_auth_db"
   AUTH_DB_USER: "spotty_auth_user"
   AUTH_DB_PORT: "5432"
@@ -43,3 +46,6 @@ data:
   STREAMING_SERVICE_URL: "http://streaming-service:8083"
   RECOMMENDATION_SERVICE_URL: "http://recommendation-service:8084"
   NOTIFICATION_SERVICE_URL: "http://notification-service:8085"
+
+  S3_ENDPOINT: "http://media-storage:9000"
+  S3_BUCKET_NAME: "tracks"
