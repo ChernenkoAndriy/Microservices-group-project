@@ -7,7 +7,6 @@ services:
   auth-db:
     image: postgres:17-alpine
     container_name: spotty-auth-db
-    restart: unless-stopped
     environment:
       POSTGRES_DB: ${AUTH_DB_NAME}
       POSTGRES_USER: ${AUTH_DB_USER}
@@ -28,7 +27,6 @@ services:
   catalog-db:
     image: postgres:17-alpine
     container_name: spotty-catalog-db
-    restart: unless-stopped
     environment:
       POSTGRES_DB: ${CATALOG_DB_NAME}
       POSTGRES_USER: ${CATALOG_DB_USER}
@@ -47,31 +45,21 @@ services:
 
   # 3. Media Storage (MinIO S3)
   media-storage:
-    image: quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
+    image: chrislusf/seaweedfs:latest
     container_name: spotty-media-storage
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: "server -dir=/data -s3 -s3.port=9000"
     volumes:
       - minio_data:/data
     ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "9000:9000"
     networks:
       - spotty-network
+
 
   # 4. БД Analytics / Recommendations (ClickHouse)
   recommendation-db:
     image: clickhouse/clickhouse-server:latest
     container_name: spotty-recommendation-db
-    restart: unless-stopped
     environment:
       CLICKHOUSE_DB: ${CLICKHOUSE_DB}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
@@ -93,7 +81,6 @@ services:
   notification-db:
     image: postgres:17-alpine
     container_name: spotty-notification-db
-    restart: unless-stopped
     environment:
       POSTGRES_DB: ${NOTIFICATION_DB_NAME}
       POSTGRES_USER: ${NOTIFICATION_DB_USER}
@@ -120,7 +107,6 @@ services:
       context: ./auth-service
       dockerfile: Dockerfile
     container_name: spotty-auth-service
-    restart: unless-stopped
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://auth-db:5432/${AUTH_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER}
@@ -140,7 +126,6 @@ services:
       context: ./track-service
       dockerfile: Dockerfile
     container_name: spotty-catalog-service
-    restart: unless-stopped
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://catalog-db:5432/${CATALOG_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${CATALOG_DB_USER}
@@ -160,7 +145,6 @@ services:
       context: ./streaming-service
       dockerfile: Dockerfile
     container_name: spotty-streaming-service
-    restart: unless-stopped
     environment:
       S3_ENDPOINT: http://media-storage:9000
       S3_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -180,7 +164,6 @@ services:
       context: ./recommendation-service
       dockerfile: Dockerfile
     container_name: spotty-recommendation-service
-    restart: unless-stopped
     environment:
       CLICKHOUSE_URL: jdbc:ch://recommendation-db:8123/${CLICKHOUSE_DB}
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
@@ -200,7 +183,6 @@ services:
       context: ./notification-service
       dockerfile: Dockerfile
     container_name: spotty-notification-service
-    restart: unless-stopped
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://notification-db:5432/${NOTIFICATION_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_DB_USER}
@@ -220,7 +202,6 @@ services:
       context: ./api-gateway
       dockerfile: Dockerfile
     container_name: spotty-api-gateway
-    restart: unless-stopped
     environment:
       AUTH_SERVICE_URL: http://auth-service:8081
       CATALOG_SERVICE_URL: http://catalog-service:8082

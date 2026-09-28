@@ -26,18 +26,16 @@ spec:
         app: media-storage
     spec:
       containers:
-        - name: minio
-          image: quay.io/minio/minio:RELEASE.2024-11-07T00-52-20Z
+        - name: seaweedfs
+          image: chrislusf/seaweedfs:latest
           args:
             - server
-            - /data
-            - --console-address
-            - :9001
+            - -dir=/data
+            - -s3
+            - -s3.port=9000
           ports:
             - containerPort: 9000
               name: api
-            - containerPort: 9001
-              name: console
           env:
             - name: MINIO_ROOT_USER
               valueFrom:
@@ -56,20 +54,6 @@ spec:
             limits:
               cpu: 500m
               memory: 512Mi
-          livenessProbe:
-            httpGet:
-              path: /minio/health/live
-              port: 9000
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            timeoutSeconds: 5
-          readinessProbe:
-            httpGet:
-              path: /minio/health/live
-              port: 9000
-            initialDelaySeconds: 10
-            periodSeconds: 5
-            timeoutSeconds: 5
           volumeMounts:
             - name: minio-storage
               mountPath: /data
@@ -92,6 +76,3 @@ spec:
     - port: 9000
       targetPort: 9000
       name: api
-    - port: 9001
-      targetPort: 9001
-      name: console

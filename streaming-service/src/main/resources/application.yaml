@@ -9,11 +9,12 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
-minio:
-  endpoint: ${S3_ENDPOINT:http://media-storage:9000}
-  access-key: ${S3_ACCESS_KEY:${MINIO_ROOT_USER:minioadmin}}
-  secret-key: ${S3_SECRET_KEY:${MINIO_ROOT_PASSWORD:minioadmin}}
-  bucket-name: ${MINIO_BUCKET_NAME:tracks}
+storage:
+  s3:
+    endpoint: ${S3_ENDPOINT:http://media-storage:9000}
+    access-key: ${S3_ACCESS_KEY:any_user}
+    secret-key: ${S3_SECRET_KEY:any_password}
+    bucket-name: ${S3_BUCKET_NAME:tracks}
 
 management:
   endpoints:

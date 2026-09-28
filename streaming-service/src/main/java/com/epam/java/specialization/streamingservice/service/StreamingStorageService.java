@@ -14,7 +14,7 @@ public class StreamingStorageService {
 
     private final MinioClient minioClient;
 
-    @Value("${minio.bucket-name}")
+    @Value("${storage.s3.bucket-name}")
     private String bucketName;
 
     public StreamingStorageService(MinioClient minioClient) {

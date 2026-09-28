@@ -10,20 +10,20 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MinioConfig {
 
-    @Value("${minio.endpoint}")
+    @Value("${storage.s3.endpoint}")
     private String endpoint;
 
-    @Value("${minio.access-key}")
+    @Value("${storage.s3.access-key}")
     private String accessKey;
 
-    @Value("${minio.secret-key}")
+    @Value("${storage.s3.secret-key}")
     private String secretKey;
 
-    @Value("${minio.bucket-name}")
+    @Value("${storage.s3.bucket-name}")
     private String bucketName;
 
     @Bean
-    public MinioClient minioClient() {
+    public MinioClient s3Client() {
         MinioClient client = MinioClient.builder()
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
@@ -35,7 +35,7 @@ public class MinioConfig {
                 client.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
             }
         } catch (Exception e) {
-            throw new RuntimeException("Не вдалося ініціалізувати MinIO бакет: " + bucketName, e);
+            System.err.println("Warning: Could not create bucket automatically: " + e.getMessage());
         }
 
         return client;

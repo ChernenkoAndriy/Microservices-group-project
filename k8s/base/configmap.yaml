@@ -43,3 +43,6 @@ data:
   STREAMING_SERVICE_URL: "http://streaming-service:8083"
   RECOMMENDATION_SERVICE_URL: "http://recommendation-service:8084"
   NOTIFICATION_SERVICE_URL: "http://notification-service:8085"
+
+  S3_ENDPOINT: "http://media-storage:9000"
+  S3_BUCKET_NAME: "tracks"
