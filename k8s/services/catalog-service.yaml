@@ -5,7 +5,7 @@ metadata:
   labels:
     app: catalog-service
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: catalog-service
@@ -49,22 +49,27 @@ spec:
             limits:
               cpu: 750m
               memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 18 # Allows up to 190s total for slow local starts
+
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 8082
-            initialDelaySeconds: 40
+              port: 8080
             periodSeconds: 15
-            timeoutSeconds: 5
             failureThreshold: 3
+
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 8082
-            initialDelaySeconds: 25
+              port: 8080
             periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
+            failureThreshold: 2
 ---
 apiVersion: v1
 kind: Service
