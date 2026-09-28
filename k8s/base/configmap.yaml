@@ -3,6 +3,9 @@ kind: ConfigMap
 metadata:
   name: spotty-config
 data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: "INFO"
+
   AUTH_DB_NAME: "spotty_auth_db"
   AUTH_DB_USER: "spotty_auth_user"
   AUTH_DB_PORT: "5432"
