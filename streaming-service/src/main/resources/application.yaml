@@ -14,3 +14,14 @@ minio:
   access-key: ${S3_ACCESS_KEY:${MINIO_ROOT_USER:minioadmin}}
   secret-key: ${S3_SECRET_KEY:${MINIO_ROOT_PASSWORD:minioadmin}}
   bucket-name: ${MINIO_BUCKET_NAME:tracks}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always

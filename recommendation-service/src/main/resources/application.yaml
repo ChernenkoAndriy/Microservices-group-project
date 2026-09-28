@@ -9,3 +9,14 @@ spring:
     username: ${CLICKHOUSE_USER:spotty_clickhouse_user}
     password: ${CLICKHOUSE_PASSWORD:your_secure_clickhouse_password}
     driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always

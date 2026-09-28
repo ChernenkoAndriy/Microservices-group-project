@@ -21,8 +21,8 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("com.clickhouse:clickhouse-jdbc:0.6.3:all")
-
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
