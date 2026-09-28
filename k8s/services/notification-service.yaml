@@ -5,7 +5,7 @@ metadata:
   labels:
     app: notification-service
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: notification-service
@@ -51,23 +51,23 @@ spec:
               memory: 768Mi
           startupProbe:
             httpGet:
-              path: /actuator/health/liveness
-              port: 8080
+              path: /actuator/health
+              port: http
             initialDelaySeconds: 10
-            periodSeconds: 10
-            failureThreshold: 18 # Allows up to 190s total for slow local starts
+            periodSeconds: 5
+            failureThreshold: 20
 
           livenessProbe:
             httpGet:
-              path: /actuator/health/liveness
-              port: 8080
+              path: /actuator/health
+              port: http
             periodSeconds: 15
             failureThreshold: 3
 
           readinessProbe:
             httpGet:
-              path: /actuator/health/readiness
-              port: 8080
+              path: /actuator/health
+              port: http
             periodSeconds: 10
             failureThreshold: 2
 ---
@@ -83,5 +83,5 @@ spec:
     app: notification-service
   ports:
     - port: 8085
-      targetPort: 8085
+      targetPort: http
       name: http
