@@ -14,7 +14,7 @@ api-contracts/
 │   ├── schemas.yaml          Id, Email, GenreSlug, PageMetadata, ProblemDetail, FieldError
 │   ├── parameters.yaml       page, size
 │   └── responses.yaml        400 / 401 / 403 / 404 / 409 / 422 / 429 error responses
-├── auth-service/openapi.yaml            /api/auth/**, /api/users/**, /api/admin/users/**
+├── auth-service/openapi.yaml            /api/v1/auth/**, /api/v1/users/**, /api/v1/admin/users/**
 ├── catalog-service/openapi.yaml         /api/tracks/**, /api/artists/**, /api/albums/**, /api/genres
 ├── library-service/openapi.yaml         /api/library/**
 ├── streaming-service/openapi.yaml       /api/media/**, /api/streaming/**
@@ -31,14 +31,14 @@ Inside each contract the order is always: `info` → `tags` → `paths` (grouped
 
 | Service | Method | Path | Auth | operationId |
 |---|---|---|---|---|
-| auth | POST | `/api/auth/register` | public | `register` |
-| auth | POST | `/api/auth/login` | public | `login` |
-| auth | POST | `/api/auth/refresh` | public | `refreshTokens` |
-| auth | POST | `/api/auth/logout` | user | `logout` |
-| auth | GET | `/api/users/me` | user | `getMyProfile` |
-| auth | PATCH | `/api/users/me` | user | `updateMyProfile` |
-| auth | GET | `/api/admin/users` | admin | `listUsers` |
-| auth | PATCH | `/api/admin/users/{userId}` | admin | `updateUser` |
+| auth | POST | `/api/v1/auth/register` | public | `register` |
+| auth | POST | `/api/v1/auth/login` | public | `login` |
+| auth | POST | `/api/v1/auth/refresh` | public | `refreshTokens` |
+| auth | POST | `/api/v1/auth/logout` | user | `logout` |
+| auth | GET | `/api/v1/users/me` | user | `getMyProfile` |
+| auth | PATCH | `/api/v1/users/me` | user | `updateMyProfile` |
+| auth | GET | `/api/v1/admin/users` | admin | `listUsers` |
+| auth | PATCH | `/api/v1/admin/users/{userId}` | admin | `updateUser` |
 | catalog | GET | `/api/tracks` | public | `searchTracks` |
 | catalog | POST | `/api/tracks` | artist | `createTrack` |
 | catalog | GET | `/api/tracks/{trackId}` | public | `getTrack` |

@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
  * Admin-only user management. Role checks are not enforced here yet (the gateway is meant to do that).
  */
 @RestController
-@RequestMapping("/api/admin/users")
+@RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 public class AdminUserController {
 
