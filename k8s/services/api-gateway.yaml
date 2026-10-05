@@ -52,6 +52,11 @@ spec:
                 configMapKeyRef:
                   name: spotty-config
                   key: NOTIFICATION_SERVICE_URL
+            - name: LIBRARY_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: LIBRARY_SERVICE_URL
           resources:
             requests:
               cpu: 250m
