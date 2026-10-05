@@ -12,6 +12,15 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+jwt:
+  # Base64-encoded HMAC-SHA key (at least 256 bits). Override with JWT_SECRET outside local development.
+  secret: ${AUTH_SERVICE_JWT_SECRET:c3BvdHR5LWF1dGgtc2VydmljZS1kZXYtc2VjcmV0LWtleS1jaGFuZ2UtbWUtcGxlYXNl}
+  ttl: ${AUTH_SERVICE_JWT_TTL:10m}
+
+logging:
+  pattern:
+    correlation: "[${spring.application.name:},%X{correlationId:-}] "
+
 management:
   endpoints:
     web:
