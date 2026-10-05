@@ -13,7 +13,7 @@ class JwtServiceTest {
 
     private static final String SECRET = "c3BvdHR5LWF1dGgtc2VydmljZS1kZXYtc2VjcmV0LWtleS1jaGFuZ2UtbWUtcGxlYXNl";
 
-    private final JwtService jwtService = new JwtService(new JwtProperties(SECRET, Duration.ofMinutes(10)));
+    private final JwtService jwtService = new JwtService(new JwtProperties(SECRET, Duration.ofMinutes(10), Duration.ofDays(30)));
 
     @Test
     void generatedTokenIsValidAndCarriesUserId() {
@@ -26,7 +26,7 @@ class JwtServiceTest {
 
     @Test
     void expiredTokenIsNotValid() {
-        JwtService expiring = new JwtService(new JwtProperties(SECRET, Duration.ofSeconds(-1)));
+        JwtService expiring = new JwtService(new JwtProperties(SECRET, Duration.ofSeconds(-1), Duration.ofDays(30)));
         String token = expiring.generateToken(user(1L));
 
         assertFalse(jwtService.isTokenValid(token));

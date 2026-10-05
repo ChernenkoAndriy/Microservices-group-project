@@ -1,7 +1,9 @@
 package com.epam.java.specialization.authservice.exception;
 
-public class TokenIsNotValidException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+public class TokenIsNotValidException extends ApiException {
     public TokenIsNotValidException(String message) {
-        super(message);
+        super(HttpStatus.UNAUTHORIZED, "TOKEN_IS_NOT_VALID", message);
     }
 }

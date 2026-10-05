@@ -3,12 +3,19 @@ package com.epam.java.specialization.authservice.service;
 import com.epam.java.specialization.authservice.dto.LoginRequest;
 import com.epam.java.specialization.authservice.dto.RegisterRequest;
 import com.epam.java.specialization.authservice.dto.TokenResponse;
+import com.epam.java.specialization.authservice.dto.UserResponse;
+import com.epam.java.specialization.authservice.exception.AccountBlockedException;
+import com.epam.java.specialization.authservice.exception.BadRequestException;
 import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
 import com.epam.java.specialization.authservice.exception.InvalidCredentialsException;
+import com.epam.java.specialization.authservice.exception.InvalidRefreshTokenException;
 import com.epam.java.specialization.authservice.exception.TokenIsNotValidException;
 import com.epam.java.specialization.authservice.exception.UserAlreadyExistsException;
 import com.epam.java.specialization.authservice.jwt.JwtService;
+import com.epam.java.specialization.authservice.jwt.RefreshTokenService;
+import com.epam.java.specialization.authservice.model.Role;
 import com.epam.java.specialization.authservice.model.User;
+import com.epam.java.specialization.authservice.model.UserStatus;
 import com.epam.java.specialization.authservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,38 +31,69 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
-    public User register(RegisterRequest request) {
+    public UserResponse register(RegisterRequest request) {
         log.debug("Registering user username={} email={} role={}", request.username(), request.email(), request.role());
+        if (request.role() == Role.ADMIN) {
+            throw new BadRequestException("ROLE_NOT_ALLOWED", "ADMIN role cannot be self-assigned");
+        }
         if (userRepository.existsByEmail(request.email())) {
-            throw new UserAlreadyExistsException("Email is already registered: " + request.email());
+            throw UserAlreadyExistsException.emailTaken(request.email());
         }
         if (userRepository.existsByUsername(request.username())) {
-            throw new UserAlreadyExistsException("Username is already taken: " + request.username());
+            throw UserAlreadyExistsException.usernameTaken(request.username());
         }
 
         User user = new User();
         user.setUsername(request.username());
         user.setEmail(request.email());
         user.setRole(request.role());
+        user.setStatus(UserStatus.ACTIVE);
         user.setPasswordHash(passwordEncoder.encode(request.password()));
 
         User saved = userRepository.save(user);
         log.debug("Registered user id={}", saved.getId());
-        return saved;
+        return UserResponse.from(saved);
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * @throws InvalidCredentialsException if the email is unknown or the password is wrong
+     * @throws AccountBlockedException     if the credentials are right but the account is blocked
+     */
+    @Transactional
     public TokenResponse login(LoginRequest request) {
         log.debug("Login attempt for email={}", request.email());
         User user = userRepository.findByEmail(request.email())
                 .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
                 .orElseThrow(InvalidCredentialsException::new);
+        if (user.isBlocked()) {
+            throw new AccountBlockedException();
+        }
 
-        String token = jwtService.generateToken(user);
         log.debug("Login succeeded for user id={}", user.getId());
-        return TokenResponse.bearer(token, jwtService.getTtlSeconds());
+        return issueTokens(user);
+    }
+
+    /**
+     * Rotates tokens: the submitted refresh token is revoked and a new pair is issued.
+     *
+     * @throws InvalidRefreshTokenException if the refresh token is unknown, expired or revoked
+     * @throws AccountBlockedException      if the account is blocked
+     */
+    @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
+    public TokenResponse refresh(String refreshToken) {
+        User user = refreshTokenService.consume(refreshToken);
+        if (user.isBlocked()) {
+            throw new AccountBlockedException();
+        }
+        log.debug("Refreshed tokens for user id={}", user.getId());
+        return issueTokens(user);
+    }
+
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
     }
 
     public boolean isTokenValid(String token) {
@@ -78,9 +116,11 @@ public class AuthService {
         return userId;
     }
 
-    @Transactional(readOnly = true)
-    public User getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityDoesNotExistException("User with email " + email + " does not exist"));
+    private TokenResponse issueTokens(User user) {
+        return TokenResponse.bearer(
+                jwtService.generateToken(user),
+                jwtService.getTtlSeconds(),
+                refreshTokenService.issue(user),
+                refreshTokenService.getTtlSeconds());
     }
 }

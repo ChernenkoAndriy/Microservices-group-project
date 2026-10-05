@@ -1,7 +1,9 @@
 package com.epam.java.specialization.authservice.exception;
 
-public class InvalidCredentialsException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+public class InvalidCredentialsException extends ApiException {
     public InvalidCredentialsException() {
-        super("Wrong email or password");
+        super(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Wrong email or password");
     }
 }
