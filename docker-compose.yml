@@ -13,8 +13,6 @@ services:
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
     volumes:
       - auth_db_data:/var/lib/postgresql/data
-    ports:
-      - "${AUTH_DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER} -d ${AUTH_DB_NAME}"]
       interval: 5s
@@ -33,8 +31,6 @@ services:
       POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD}
     volumes:
       - catalog_db_data:/var/lib/postgresql/data
-    ports:
-      - "${CATALOG_DB_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${CATALOG_DB_USER} -d ${CATALOG_DB_NAME}"]
       interval: 5s
@@ -50,8 +46,6 @@ services:
     command: "server -dir=/data -s3 -s3.port=9000"
     volumes:
       - minio_data:/data
-    ports:
-      - "9000:9000"
     networks:
       - spotty-network
 
@@ -66,9 +60,6 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-    ports:
-      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
-      - "${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://localhost:8123/ping || exit 1"]
       interval: 5s
@@ -87,8 +78,6 @@ services:
       POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
     volumes:
       - notification_db_data:/var/lib/postgresql/data
-    ports:
-      - "${NOTIFICATION_DB_PORT:-5434}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${NOTIFICATION_DB_USER} -d ${NOTIFICATION_DB_NAME}"]
       interval: 5s
@@ -107,8 +96,6 @@ services:
       POSTGRES_PASSWORD: ${LIBRARY_DB_PASSWORD}
     volumes:
       - library_db_data:/var/lib/postgresql/data
-    ports:
-      - "${LIBRARY_DB_PORT:-5435}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${LIBRARY_DB_USER} -d ${LIBRARY_DB_NAME}"]
       interval: 5s
@@ -132,8 +119,6 @@ services:
       SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD}
       SERVER_PORT: 8081
-    ports:
-      - "${AUTH_SERVICE_PORT:-8081}:8081"
     depends_on:
       auth-db:
         condition: service_healthy
@@ -151,8 +136,6 @@ services:
       SPRING_DATASOURCE_USERNAME: ${CATALOG_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD}
       SERVER_PORT: 8082
-    ports:
-      - "${CATALOG_SERVICE_PORT:-8082}:8082"
     depends_on:
       catalog-db:
         condition: service_healthy
@@ -170,8 +153,6 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       SERVER_PORT: 8083
-    ports:
-      - "${STREAMING_SERVICE_PORT:-8083}:8083"
     depends_on:
       media-storage:
         condition: service_healthy
@@ -189,8 +170,6 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE_USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       SERVER_PORT: 8084
-    ports:
-      - "${RECOMMENDATION_SERVICE_PORT:-8084}:8084"
     depends_on:
       recommendation-db:
         condition: service_healthy
@@ -208,8 +187,6 @@ services:
       SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
       SERVER_PORT: 8085
-    ports:
-      - "${NOTIFICATION_SERVICE_PORT:-8085}:8085"
     depends_on:
       notification-db:
         condition: service_healthy
@@ -227,8 +204,6 @@ services:
       SPRING_DATASOURCE_USERNAME: ${LIBRARY_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${LIBRARY_DB_PASSWORD}
       SERVER_PORT: 8086
-    ports:
-      - "${LIBRARY_SERVICE_PORT:-8086}:8086"
     depends_on:
       library-db:
         condition: service_healthy
