@@ -5,10 +5,12 @@ import jakarta.servlet.ServletException;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorrelationIdFilter extends OncePerRequestFilter {
 
@@ -20,7 +22,10 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         }
         MDC.put("correlationId", correlationId);
 
-        try { filterChain.doFilter(new CorrelationIdRequestWrapper(request, correlationId), response); }
+        try {
+            response.setHeader("X-Correlation-Id", correlationId);
+            filterChain.doFilter(new CorrelationIdRequestWrapper(request, correlationId), response);
+        }
         finally { MDC.remove("correlationId"); }
     }
 
