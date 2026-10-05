@@ -9,28 +9,38 @@ spring:
       server:
         webmvc:
           routes:
+            # Admin routes are split by owning service and listed before the general routes.
+            # The admin role is not enforced here yet.
+            - id: admin-users
+              uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/admin/users/**
+            - id: admin-notifications
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/v1/admin/notifications/**,/api/v1/admin/notification-templates/**
             - id: auth
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
-                - Path=/api/v1/auth/**
+                - Path=/api/v1/auth/**,/api/v1/users/**
             - id: tracks
               uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/tracks/**
             - id: library
-              uri: ${LIBRARY_SERVICE_URL:http://localhost:8083}
+              uri: ${LIBRARY_SERVICE_URL:http://localhost:8086}
               predicates:
                 - Path=/api/v1/library/**
             - id: streaming
-              uri: ${STREAMING_SERVICE_URL:http://localhost:8084}
+              uri: ${STREAMING_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/v1/streaming/**
             - id: recommendations
-              uri: ${RECOMMENDATIONS_SERVICE_URL:http://localhost:8085}
+              uri: ${RECOMMENDATION_SERVICE_URL:http://localhost:8084}
               predicates:
                 - Path=/api/v1/recommendations/**
             - id: notifications
-              uri: ${NOTIFICATIONS_SERVICE_URL:http://localhost:8086}
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
               predicates:
                 - Path=/api/v1/notifications/**
 management:
@@ -43,4 +53,3 @@ management:
       probes:
         enabled: true
       show-details: always
-
