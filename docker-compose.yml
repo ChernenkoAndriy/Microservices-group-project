@@ -1,6 +1,6 @@
 services:
   # ============================================================================
-  # СХОВИЩА ТА БАЗИ ДАНИХ (5 БАЗ ДАНИХ)
+  # СХОВИЩА ТА БАЗИ ДАНИХ (6 БАЗ ДАНИХ)
   # ============================================================================
 
   # 1. БД Auth (PostgreSQL)
@@ -97,8 +97,28 @@ services:
     networks:
       - spotty-network
 
+  # 6. БД User Library (PostgreSQL)
+  library-db:
+    image: postgres:17-alpine
+    container_name: spotty-library-db
+    environment:
+      POSTGRES_DB: ${LIBRARY_DB_NAME}
+      POSTGRES_USER: ${LIBRARY_DB_USER}
+      POSTGRES_PASSWORD: ${LIBRARY_DB_PASSWORD}
+    volumes:
+      - library_db_data:/var/lib/postgresql/data
+    ports:
+      - "${LIBRARY_DB_PORT:-5435}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${LIBRARY_DB_USER} -d ${LIBRARY_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spotty-network
+
   # ============================================================================
-  # СЕРВІСИ (6 СЕРВІСІВ)
+  # СЕРВІСИ (7 СЕРВІСІВ)
   # ============================================================================
 
   # 1. Сервіс Auth (IAM)
@@ -196,7 +216,26 @@ services:
     networks:
       - spotty-network
 
-  # 6. API Gateway (Центральна точка входу)
+  # 6. Сервіс User Library (лайки, підписки на артистів)
+  library-service:
+    build:
+      context: ./library-service
+      dockerfile: Dockerfile
+    container_name: spotty-library-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://library-db:5432/${LIBRARY_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${LIBRARY_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${LIBRARY_DB_PASSWORD}
+      SERVER_PORT: 8086
+    ports:
+      - "${LIBRARY_SERVICE_PORT:-8086}:8086"
+    depends_on:
+      library-db:
+        condition: service_healthy
+    networks:
+      - spotty-network
+
+  # 7. API Gateway (Центральна точка входу)
   api-gateway:
     build:
       context: ./api-gateway
@@ -208,6 +247,7 @@ services:
       STREAMING_SERVICE_URL: http://streaming-service:8083
       RECOMMENDATION_SERVICE_URL: http://recommendation-service:8084
       NOTIFICATION_SERVICE_URL: http://notification-service:8085
+      LIBRARY_SERVICE_URL: http://library-service:8086
       SERVER_PORT: 8080
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
@@ -217,6 +257,7 @@ services:
       - streaming-service
       - recommendation-service
       - notification-service
+      - library-service
     networks:
       - spotty-network
 
@@ -229,6 +270,7 @@ volumes:
   minio_data:
   clickhouse_data:
   notification_db_data:
+  library_db_data:
 
 networks:
   spotty-network:

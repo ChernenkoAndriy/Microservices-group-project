@@ -1,0 +1,740 @@
+openapi: 3.0.3
+info:
+  title: Spotty Catalog Service API
+  version: 1.0.0
+  description: |
+    Catalog & Content: artists, albums, tracks and genres, plus track search.
+
+    Owned by **track-service** (compose/k8s name `catalog-service`, port 8082). All paths are reached
+    through the API gateway. Shared conventions are described in `api-contracts/README.md`.
+
+    Other services return only `trackId`s and `artistId`s. Clients load the details here,
+    for example `GET /api/tracks?ids=1,2,3`.
+
+servers:
+  - url: http://localhost:8080
+    description: API gateway (local)
+
+tags:
+  - name: Tracks
+    description: Track metadata and search (Scenario 1 starts here).
+  - name: Artists
+    description: Artist pages and the artist dashboard.
+  - name: Albums
+    description: Albums and their tracks.
+  - name: Genres
+    description: The genre dictionary.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/tracks:
+    get:
+      tags: [Tracks]
+      operationId: searchTracks
+      summary: Search and browse published tracks
+      description: |
+        Returns only `PUBLISHED` tracks. All filters are combined with AND.
+        A track matches `genre` if it has that genre among its genres.
+      security: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Free-text search over track title, artist name and album title.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: genre
+          in: query
+          required: false
+          schema:
+            $ref: '../common/schemas.yaml#/GenreSlug'
+        - name: artistId
+          in: query
+          required: false
+          schema:
+            $ref: '../common/schemas.yaml#/Id'
+        - name: ids
+          in: query
+          required: false
+          description: |
+            Batch lookup by id, comma-separated (`ids=1,2,3`). Unknown or unpublished ids are
+            skipped. When set, `size` must be at least the number of ids.
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            uniqueItems: true
+            items:
+              $ref: '../common/schemas.yaml#/Id'
+        - name: sort
+          in: query
+          required: false
+          description: Defaults to `RELEVANCE` when `q` is set, otherwise `NEWEST`.
+          schema:
+            $ref: '#/components/schemas/TrackSort'
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of tracks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+    post:
+      tags: [Tracks]
+      operationId: createTrack
+      summary: Create track metadata
+      description: |
+        **Role:** ARTIST. Scenario 1, step 1. The track is created for the caller's artist
+        profile with status `AWAITING_AUDIO`. Next, upload the master audio file through
+        `POST /api/media/{trackId}/master` (streaming-service).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrackRequest'
+      responses:
+        '201':
+          description: Track created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '409':
+          description: The album already has a track with this `trackNumber` (`code` = `TRACK_NUMBER_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '422':
+          description: Unknown genre (`UNKNOWN_GENRE`), or the album does not exist or belongs to another artist (`ALBUM_NOT_USABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+  /api/tracks/{trackId}:
+    parameters:
+      - $ref: '#/components/parameters/TrackId'
+    get:
+      tags: [Tracks]
+      operationId: getTrack
+      summary: Track details
+      description: |
+        Anonymous callers and listeners see only `PUBLISHED` tracks; any other status returns 404.
+        The owning artist and administrators see every status.
+      security:
+        - {}
+        - bearerAuth: []
+      responses:
+        '200':
+          description: The track.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+    patch:
+      tags: [Tracks]
+      operationId: updateTrack
+      summary: Edit track metadata
+      description: |
+        **Role:** ARTIST (owner). Partial update: omitted fields keep their value; at least one
+        field is required. `genreSlugs`, if present, replaces the whole list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTrackRequest'
+      responses:
+        '200':
+          description: The updated track.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+        '409':
+          description: The album already has a track with this `trackNumber` (`code` = `TRACK_NUMBER_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '422':
+          $ref: '../common/responses.yaml#/UnprocessableEntity'
+    delete:
+      tags: [Tracks]
+      operationId: deleteTrack
+      summary: Remove or unpublish a track
+      description: |
+        **Role:** ARTIST (owner) or ADMIN. A track that was never published is deleted.
+        A published track is moved to `UNPUBLISHED`, so existing likes and statistics keep a
+        valid reference.
+      responses:
+        '204':
+          description: Track removed or unpublished.
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+  /api/artists/me/tracks:
+    get:
+      tags: [Artists]
+      operationId: listMyTracks
+      summary: Artist dashboard - own tracks in every status
+      description: '**Role:** ARTIST. Sorted by `createdAt`, newest first.'
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TrackStatus'
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of the caller's tracks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+
+  /api/artists/{artistId}:
+    parameters:
+      - $ref: '#/components/parameters/ArtistId'
+    get:
+      tags: [Artists]
+      operationId: getArtist
+      summary: Artist page
+      security: []
+      responses:
+        '200':
+          description: The artist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Artist'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+  /api/artists/{artistId}/tracks:
+    parameters:
+      - $ref: '#/components/parameters/ArtistId'
+    get:
+      tags: [Artists]
+      operationId: listArtistTracks
+      summary: Artist's published tracks
+      security: []
+      parameters:
+        - name: sort
+          in: query
+          required: false
+          description: Defaults to `NEWEST`. `RELEVANCE` is treated as `NEWEST` here.
+          schema:
+            $ref: '#/components/schemas/TrackSort'
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of tracks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrackPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+  /api/artists/{artistId}/albums:
+    parameters:
+      - $ref: '#/components/parameters/ArtistId'
+    get:
+      tags: [Artists]
+      operationId: listArtistAlbums
+      summary: Artist's albums
+      description: Sorted by `releaseDate`, newest first. Albums without published tracks are omitted.
+      security: []
+      parameters:
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of albums.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlbumSummaryPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+  /api/albums:
+    post:
+      tags: [Albums]
+      operationId: createAlbum
+      summary: Create an album
+      description: '**Role:** ARTIST. The album belongs to the caller''s artist profile. Add tracks by setting `albumId` on them.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAlbumRequest'
+      responses:
+        '201':
+          description: Album created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+
+  /api/albums/{albumId}:
+    parameters:
+      - name: albumId
+        in: path
+        required: true
+        schema:
+          $ref: '../common/schemas.yaml#/Id'
+    get:
+      tags: [Albums]
+      operationId: getAlbum
+      summary: Album with its tracks
+      description: '`tracks` contains only published tracks, ordered by `trackNumber`.'
+      security: []
+      responses:
+        '200':
+          description: The album.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+  /api/genres:
+    get:
+      tags: [Genres]
+      operationId: listGenres
+      summary: Genre list
+      description: All genres, sorted by name. Not paged; the list is small and changes rarely.
+      security: []
+      responses:
+        '200':
+          description: All genres.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 500
+                items:
+                  $ref: '#/components/schemas/Genre'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TrackId:
+      name: trackId
+      in: path
+      required: true
+      schema:
+        $ref: '../common/schemas.yaml#/Id'
+    ArtistId:
+      name: artistId
+      in: path
+      required: true
+      description: Artist id. Equals the artist's user id in auth-service.
+      schema:
+        $ref: '../common/schemas.yaml#/Id'
+
+  schemas:
+    TrackStatus:
+      description: |
+        - `AWAITING_AUDIO`: metadata created, no master file uploaded yet.
+        - `PROCESSING`: master uploaded, transcoding in progress.
+        - `PUBLISHED`: transcoded and publicly visible.
+        - `FAILED`: transcoding failed; upload a new master file to retry.
+        - `UNPUBLISHED`: was published, then removed by the owner or an admin.
+      type: string
+      enum: [AWAITING_AUDIO, PROCESSING, PUBLISHED, FAILED, UNPUBLISHED]
+
+    TrackSort:
+      type: string
+      enum: [RELEVANCE, NEWEST, OLDEST, TITLE]
+
+    AlbumType:
+      type: string
+      enum: [ALBUM, EP, SINGLE, COMPILATION]
+
+    Title:
+      description: Track or album title. Leading and trailing whitespace is not allowed.
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^\S(?:.*\S)?$'
+      example: Midnight Drive
+
+    TrackNumber:
+      description: Position of the track on its album.
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 999
+
+    GenreSlugList:
+      description: One to three genres, most relevant first, without duplicates.
+      type: array
+      minItems: 1
+      maxItems: 3
+      uniqueItems: true
+      items:
+        $ref: '../common/schemas.yaml#/GenreSlug'
+
+    ImageUrl:
+      type: string
+      format: uri
+      maxLength: 2048
+      example: https://cdn.spotty.example/covers/42.webp
+
+    Genre:
+      type: object
+      required:
+        - slug
+        - name
+      properties:
+        slug:
+          $ref: '../common/schemas.yaml#/GenreSlug'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          example: Indie Rock
+
+    ArtistRef:
+      description: Minimal artist reference embedded in tracks and albums.
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        name:
+          $ref: '#/components/schemas/ArtistName'
+
+    AlbumRef:
+      description: Minimal album reference embedded in tracks.
+      type: object
+      required:
+        - id
+        - title
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        title:
+          $ref: '#/components/schemas/Title'
+
+    ArtistName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      example: The Night Owls
+
+    Track:
+      type: object
+      required:
+        - id
+        - title
+        - artist
+        - genres
+        - explicit
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        title:
+          $ref: '#/components/schemas/Title'
+        artist:
+          $ref: '#/components/schemas/ArtistRef'
+        album:
+          $ref: '#/components/schemas/AlbumRef'
+        trackNumber:
+          $ref: '#/components/schemas/TrackNumber'
+        genres:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/Genre'
+        durationSeconds:
+          description: Set after transcoding. Absent while the status is `AWAITING_AUDIO` or `PROCESSING`.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 21600
+          example: 214
+        coverUrl:
+          $ref: '#/components/schemas/ImageUrl'
+        explicit:
+          description: Contains explicit content.
+          type: boolean
+        releaseDate:
+          description: Official release date. Absent until the track is first published, unless the artist set one.
+          type: string
+          format: date
+          example: '2026-10-01'
+        status:
+          $ref: '#/components/schemas/TrackStatus'
+        publishedAt:
+          description: Set when the track first becomes `PUBLISHED`.
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TrackPage:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Track'
+        page:
+          $ref: '../common/schemas.yaml#/PageMetadata'
+
+    CreateTrackRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - genreSlugs
+      properties:
+        title:
+          $ref: '#/components/schemas/Title'
+        genreSlugs:
+          $ref: '#/components/schemas/GenreSlugList'
+        albumId:
+          description: Album owned by the caller. Omit for a standalone track.
+          type: integer
+          format: int64
+          minimum: 1
+        trackNumber:
+          description: Required when `albumId` is set; must be omitted otherwise.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 999
+        explicit:
+          type: boolean
+          default: false
+        releaseDate:
+          description: Optional planned release date. Defaults to the publication date.
+          type: string
+          format: date
+
+    UpdateTrackRequest:
+      description: At least one field must be present.
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title:
+          $ref: '#/components/schemas/Title'
+        genreSlugs:
+          $ref: '#/components/schemas/GenreSlugList'
+        albumId:
+          description: Moves the track to another album owned by the caller. `trackNumber` must be sent too.
+          type: integer
+          format: int64
+          minimum: 1
+        trackNumber:
+          $ref: '#/components/schemas/TrackNumber'
+        explicit:
+          type: boolean
+        releaseDate:
+          type: string
+          format: date
+
+    Artist:
+      type: object
+      required:
+        - id
+        - name
+        - trackCount
+        - albumCount
+        - createdAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        name:
+          $ref: '#/components/schemas/ArtistName'
+        bio:
+          type: string
+          maxLength: 2000
+        avatarUrl:
+          $ref: '#/components/schemas/ImageUrl'
+        trackCount:
+          description: Number of published tracks.
+          type: integer
+          format: int32
+          minimum: 0
+        albumCount:
+          description: Number of albums with at least one published track.
+          type: integer
+          format: int32
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+
+    AlbumSummary:
+      type: object
+      required:
+        - id
+        - title
+        - artist
+        - type
+        - trackCount
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        title:
+          $ref: '#/components/schemas/Title'
+        artist:
+          $ref: '#/components/schemas/ArtistRef'
+        type:
+          $ref: '#/components/schemas/AlbumType'
+        releaseDate:
+          type: string
+          format: date
+        coverUrl:
+          $ref: '#/components/schemas/ImageUrl'
+        trackCount:
+          description: Number of published tracks on the album.
+          type: integer
+          format: int32
+          minimum: 0
+
+    AlbumSummaryPage:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/AlbumSummary'
+        page:
+          $ref: '../common/schemas.yaml#/PageMetadata'
+
+    Album:
+      type: object
+      required:
+        - id
+        - title
+        - artist
+        - type
+        - trackCount
+        - tracks
+        - createdAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        title:
+          $ref: '#/components/schemas/Title'
+        artist:
+          $ref: '#/components/schemas/ArtistRef'
+        type:
+          $ref: '#/components/schemas/AlbumType'
+        releaseDate:
+          type: string
+          format: date
+        coverUrl:
+          $ref: '#/components/schemas/ImageUrl'
+        trackCount:
+          description: Number of published tracks on the album.
+          type: integer
+          format: int32
+          minimum: 0
+        tracks:
+          description: Published tracks ordered by `trackNumber`.
+          type: array
+          maxItems: 999
+          items:
+            $ref: '#/components/schemas/Track'
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateAlbumRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - type
+      properties:
+        title:
+          $ref: '#/components/schemas/Title'
+        type:
+          $ref: '#/components/schemas/AlbumType'
+        releaseDate:
+          type: string
+          format: date

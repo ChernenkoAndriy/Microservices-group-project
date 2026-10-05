@@ -1,0 +1,266 @@
+openapi: 3.0.3
+info:
+  title: Spotty Recommendation Service API
+  version: 1.0.0
+  description: |
+    Recommendation & Analytics: personal feeds, listening events and charts (ClickHouse).
+
+    Owned by **recommendation-service** (port 8084). All paths are reached through the API gateway.
+    Shared conventions are described in `api-contracts/README.md`.
+
+    Responses contain track ids only. Load track details from the catalog service
+    (`GET /api/tracks?ids=...`).
+
+servers:
+  - url: http://localhost:8080
+    description: API gateway (local)
+
+tags:
+  - name: Recommendations
+    description: Personal feed (Scenario 3).
+  - name: Analytics
+    description: Listening events.
+  - name: Charts
+    description: Popularity rankings.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/recommendations/me:
+    get:
+      tags: [Recommendations]
+      operationId: getMyRecommendations
+      summary: Personal recommendation feed
+      description: |
+        Scenario 3. Returns the precomputed feed immediately, then asynchronously records the
+        shown tracks as impressions (they are not repeated next session) and queues the next
+        batch. Users without a taste profile get a popularity-based feed (`TRENDING`).
+        `items` may be empty.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: genre
+          in: query
+          required: false
+          description: Limit the feed to one genre.
+          schema:
+            $ref: '../common/schemas.yaml#/GenreSlug'
+      responses:
+        '200':
+          description: The feed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationFeed'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/analytics/plays:
+    post:
+      tags: [Analytics]
+      operationId: reportPlay
+      summary: Report a play
+      description: |
+        Records a `ListeningEvent`. The user id comes from the access token, never from the body.
+        Ingestion is asynchronous; the track id is not checked synchronously.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlayReport'
+      responses:
+        '202':
+          description: Event accepted.
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '429':
+          $ref: '../common/responses.yaml#/TooManyRequests'
+
+  /api/charts/top:
+    get:
+      tags: [Charts]
+      operationId: getTopChart
+      summary: Popular tracks
+      description: Ranked by play count in the period. Recomputed periodically; see `generatedAt`.
+      security: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          description: Defaults to `WEEK`.
+          schema:
+            $ref: '#/components/schemas/ChartPeriod'
+        - name: genre
+          in: query
+          required: false
+          schema:
+            $ref: '../common/schemas.yaml#/GenreSlug'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: The chart.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Chart'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RecommendationReason:
+      description: |
+        - `SIMILAR_TO_LIKED`: similar to tracks the user liked.
+        - `FOLLOWED_ARTIST`: by an artist the user follows.
+        - `POPULAR_IN_GENRE`: popular in a genre the user listens to.
+        - `NEW_RELEASE`: recently published and matching the taste profile.
+        - `TRENDING`: generally popular; used when there is no taste profile yet.
+      type: string
+      enum: [SIMILAR_TO_LIKED, FOLLOWED_ARTIST, POPULAR_IN_GENRE, NEW_RELEASE, TRENDING]
+
+    PlaySource:
+      description: Where in the client playback started.
+      type: string
+      enum: [SEARCH, RECOMMENDATIONS, LIBRARY, ALBUM, ARTIST, CHART, OTHER]
+
+    ChartPeriod:
+      type: string
+      enum: [DAY, WEEK, MONTH, ALL_TIME]
+
+    FeedId:
+      description: Identifies one served feed. Send it back in `PlayReport.feedId` for plays started from the feed.
+      type: string
+      format: uuid
+
+    RecommendedTrack:
+      type: object
+      required:
+        - trackId
+        - position
+        - reason
+      properties:
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        position:
+          description: One-based position in the feed.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+        reason:
+          $ref: '#/components/schemas/RecommendationReason'
+
+    RecommendationFeed:
+      type: object
+      required:
+        - feedId
+        - generatedAt
+        - items
+      properties:
+        feedId:
+          $ref: '#/components/schemas/FeedId'
+        generatedAt:
+          description: When the feed was computed.
+          type: string
+          format: date-time
+        items:
+          description: Ordered by `position`.
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/RecommendedTrack'
+
+    PlayReport:
+      type: object
+      additionalProperties: false
+      required:
+        - trackId
+        - listenedSeconds
+      properties:
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        listenedSeconds:
+          description: Seconds actually listened, excluding pauses and skipped-over parts.
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 21600
+        playedAt:
+          description: |
+            When playback started. Defaults to the time the server received the report. Rejected
+            if more than 5 minutes in the future or more than 30 days in the past.
+          type: string
+          format: date-time
+        source:
+          $ref: '#/components/schemas/PlaySource'
+        feedId:
+          $ref: '#/components/schemas/FeedId'
+
+    ChartEntry:
+      type: object
+      required:
+        - rank
+        - trackId
+        - playCount
+      properties:
+        rank:
+          description: One-based rank.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 100
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        playCount:
+          description: Plays in the period.
+          type: integer
+          format: int64
+          minimum: 0
+
+    Chart:
+      type: object
+      required:
+        - period
+        - generatedAt
+        - items
+      properties:
+        period:
+          $ref: '#/components/schemas/ChartPeriod'
+        genre:
+          $ref: '../common/schemas.yaml#/GenreSlug'
+        generatedAt:
+          type: string
+          format: date-time
+        items:
+          description: Ordered by `rank`.
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ChartEntry'

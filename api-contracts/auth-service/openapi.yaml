@@ -1,0 +1,475 @@
+openapi: 3.0.3
+info:
+  title: Spotty Auth Service API
+  version: 1.0.0
+  description: |
+    Identity & Access Management: registration, login, JWT access/refresh tokens,
+    the current user's profile and user administration.
+
+    Owned by **auth-service** (port 8081). All paths are reached through the API gateway.
+    Shared conventions (ids, errors, paging, nulls) are described in `api-contracts/README.md`.
+
+servers:
+  - url: http://localhost:8080
+    description: API gateway (local)
+
+tags:
+  - name: Authentication
+    description: Registration, login and token lifecycle.
+  - name: Profile
+    description: The authenticated user's own account.
+  - name: User administration
+    description: Administrator-only user management.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Authentication]
+      operationId: register
+      summary: Register a listener or artist account
+      description: |
+        Creates an `ACTIVE` account with the requested role. `ADMIN` cannot be self-assigned.
+        Registering as `ARTIST` also creates the artist's catalog profile, whose `artistId`
+        equals the new user's `id`. Rate limited per client IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '409':
+          description: The email is already registered (`code` = `EMAIL_ALREADY_REGISTERED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '429':
+          $ref: '../common/responses.yaml#/TooManyRequests'
+
+  /api/auth/login:
+    post:
+      tags: [Authentication]
+      operationId: login
+      summary: Exchange credentials for access and refresh tokens
+      description: Rate limited per client IP and per email.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Credentials accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          description: Wrong email or password (`code` = `INVALID_CREDENTIALS`). The response does not reveal which.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '403':
+          description: The account is blocked (`code` = `ACCOUNT_BLOCKED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '429':
+          $ref: '../common/responses.yaml#/TooManyRequests'
+
+  /api/auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshTokens
+      summary: Rotate tokens
+      description: |
+        Issues a new access token and a new refresh token. The submitted refresh token is
+        revoked (single use); reusing it returns 401.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Tokens rotated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          description: The refresh token is unknown, expired or revoked (`code` = `INVALID_REFRESH_TOKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '403':
+          description: The account is blocked (`code` = `ACCOUNT_BLOCKED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+  /api/auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      summary: Revoke the refresh token / session
+      description: Idempotent. Revoking an already revoked or unknown token still returns 204.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '204':
+          description: Session ended.
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/users/me:
+    get:
+      tags: [Profile]
+      operationId: getMyProfile
+      summary: Current user's profile
+      responses:
+        '200':
+          description: The caller's profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+    patch:
+      tags: [Profile]
+      operationId: updateMyProfile
+      summary: Update the current user's profile
+      description: |
+        Partial update: omitted fields keep their value. Emits `UserSnapshot`.
+        Email, role and status cannot be changed here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: The updated profile.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/admin/users:
+    get:
+      tags: [User administration]
+      operationId: listUsers
+      summary: List or search users
+      description: '**Role:** ADMIN. Sorted by `createdAt`, newest first.'
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Case-insensitive substring match on email or display name.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UserStatus'
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+
+  /api/admin/users/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          $ref: '../common/schemas.yaml#/Id'
+    patch:
+      tags: [User administration]
+      operationId: updateUser
+      summary: Change a user's role or status
+      description: |
+        **Role:** ADMIN. Partial update: omitted fields keep their value; at least one field is required.
+        Blocking a user revokes all of their refresh tokens. Emits `UserSnapshot`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateUserRequest'
+      responses:
+        '200':
+          description: The updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+        '409':
+          description: An administrator cannot block or demote their own account (`code` = `SELF_MODIFICATION_FORBIDDEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserRole:
+      type: string
+      enum: [LISTENER, ARTIST, ADMIN]
+
+    RegistrationRole:
+      description: Roles a user may choose at registration.
+      type: string
+      enum: [LISTENER, ARTIST]
+
+    UserStatus:
+      type: string
+      enum: [ACTIVE, BLOCKED]
+
+    DisplayName:
+      description: Public name. Leading and trailing whitespace is not allowed.
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: '^\S(?:.*\S)?$'
+      example: Andrii
+
+    AvatarUrl:
+      type: string
+      format: uri
+      maxLength: 2048
+      example: https://cdn.spotty.example/avatars/42.webp
+
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+        - displayName
+        - role
+      properties:
+        email:
+          $ref: '../common/schemas.yaml#/Email'
+        password:
+          description: 8–128 characters. Stored only as a hash.
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 128
+          writeOnly: true
+        displayName:
+          $ref: '#/components/schemas/DisplayName'
+        role:
+          $ref: '#/components/schemas/RegistrationRole'
+
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - password
+      properties:
+        email:
+          $ref: '../common/schemas.yaml#/Email'
+        password:
+          description: Not checked against the password policy, so the response does not reveal it.
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+
+    RefreshTokenRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+          maxLength: 4096
+
+    LogoutRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          description: The refresh token of the session to end.
+          type: string
+          minLength: 1
+          maxLength: 4096
+
+    TokenResponse:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+        - refreshToken
+        - refreshExpiresIn
+      properties:
+        accessToken:
+          description: 'Signed JWT. Send as `Authorization: Bearer <accessToken>`.'
+          type: string
+          minLength: 1
+          maxLength: 4096
+        tokenType:
+          type: string
+          enum: [Bearer]
+        expiresIn:
+          description: Access token lifetime in seconds.
+          type: integer
+          format: int32
+          minimum: 1
+          example: 900
+        refreshToken:
+          description: Opaque single-use refresh token.
+          type: string
+          minLength: 1
+          maxLength: 4096
+        refreshExpiresIn:
+          description: Refresh token lifetime in seconds.
+          type: integer
+          format: int32
+          minimum: 1
+          example: 2592000
+
+    UpdateProfileRequest:
+      description: At least one field must be present.
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        displayName:
+          $ref: '#/components/schemas/DisplayName'
+        avatarUrl:
+          $ref: '#/components/schemas/AvatarUrl'
+
+    AdminUpdateUserRequest:
+      description: At least one field must be present.
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+
+    UserProfile:
+      type: object
+      required:
+        - id
+        - email
+        - displayName
+        - role
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        email:
+          $ref: '../common/schemas.yaml#/Email'
+        displayName:
+          $ref: '#/components/schemas/DisplayName'
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        avatarUrl:
+          $ref: '#/components/schemas/AvatarUrl'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserPage:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/UserProfile'
+        page:
+          $ref: '../common/schemas.yaml#/PageMetadata'

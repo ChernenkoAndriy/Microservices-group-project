@@ -1,0 +1,456 @@
+openapi: 3.0.3
+info:
+  title: Spotty Streaming Service API
+  version: 1.0.0
+  description: |
+    Media Streaming & Delivery: master/cover uploads, transcoding status, signed stream tokens
+    and audio streaming.
+
+    Owned by **streaming-service** (port 8083). All paths are reached through the API gateway;
+    the gateway passes `Range` headers through and does not buffer `/api/streaming/**` responses.
+    Shared conventions are described in `api-contracts/README.md`.
+
+servers:
+  - url: http://localhost:8080
+    description: API gateway (local)
+
+tags:
+  - name: Media upload
+    description: Artist uploads and transcoding (Scenario 1).
+  - name: Streaming
+    description: Playback and offline download.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/media/{trackId}/master:
+    parameters:
+      - $ref: '#/components/parameters/TrackId'
+    post:
+      tags: [Media upload]
+      operationId: uploadMaster
+      summary: Upload the master audio file
+      description: |
+        **Role:** ARTIST (owner of the track). Scenario 1. Accepts WAV, FLAC, AIFF or MP3 up to
+        500 MB. Starts (or restarts, after `FAILED`) transcoding asynchronously; poll
+        `GET /api/media/{trackId}/status`. When it finishes, `AssetReadySnapshot` is emitted and the
+        catalog publishes the track.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MasterUploadRequest'
+            encoding:
+              file:
+                contentType: audio/wav, audio/x-wav, audio/flac, audio/aiff, audio/x-aiff, audio/mpeg
+      responses:
+        '202':
+          description: Upload stored, transcoding queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscodingStatus'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+        '409':
+          description: A transcoding job for this track is already queued or running, or the track is already published (`code` = `TRANSCODING_IN_PROGRESS` / `TRACK_ALREADY_PUBLISHED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+
+  /api/media/{trackId}/cover:
+    parameters:
+      - $ref: '#/components/parameters/TrackId'
+    post:
+      tags: [Media upload]
+      operationId: uploadCover
+      summary: Upload the cover image
+      description: |
+        **Role:** ARTIST (owner of the track). Square JPEG, PNG or WebP, 500–5000 px per side,
+        up to 10 MB. Replaces any previous cover. The catalog picks up the new `coverUrl` from
+        `AssetReadySnapshot`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CoverUploadRequest'
+            encoding:
+              file:
+                contentType: image/jpeg, image/png, image/webp
+      responses:
+        '201':
+          description: Cover stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CoverUploadResponse'
+        '400':
+          description: The image is not square or not 500–5000 px per side (`code` = `INVALID_IMAGE_DIMENSIONS`), or the request is malformed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+
+  /api/media/{trackId}/status:
+    parameters:
+      - $ref: '#/components/parameters/TrackId'
+    get:
+      tags: [Media upload]
+      operationId: getTranscodingStatus
+      summary: Transcoding job status
+      description: '**Role:** ARTIST (owner of the track) or ADMIN.'
+      responses:
+        '200':
+          description: Status of the latest transcoding job.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TranscodingStatus'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          description: Unknown track, or no master file uploaded yet.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+  /api/streaming/{trackId}/token:
+    parameters:
+      - $ref: '#/components/parameters/TrackId'
+    post:
+      tags: [Streaming]
+      operationId: issueStreamToken
+      summary: Issue a signed playback or download token
+      description: |
+        Returns a short-lived token bound to the caller, the track and the token type.
+        Pass it to `GET /api/streaming/{trackId}?token=...`; `streamUrl` already contains it.
+        `STREAM` tokens live 5 minutes; `OFFLINE` tokens live 24 hours.
+      parameters:
+        - name: type
+          in: query
+          required: false
+          description: Defaults to `STREAM`.
+          schema:
+            $ref: '#/components/schemas/StreamTokenType'
+      responses:
+        '200':
+          description: Token issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamToken'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+        '409':
+          description: The track has no playable audio yet (`code` = `TRACK_NOT_PLAYABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+  /api/streaming/{trackId}:
+    parameters:
+      - $ref: '#/components/parameters/TrackId'
+    get:
+      tags: [Streaming]
+      operationId: streamTrack
+      summary: Stream or download audio
+      description: |
+        Authenticated by the signed `token` query parameter, not by a bearer token, so `<audio src>`
+        works directly. Supports a single HTTP byte range. With an `OFFLINE` token the response
+        carries `Content-Disposition: attachment`.
+      security:
+        - streamToken: []
+      parameters:
+        - name: quality
+          in: query
+          required: false
+          description: Defaults to `NORMAL`. Falls back to the best available lower quality.
+          schema:
+            $ref: '#/components/schemas/AudioQuality'
+        - name: Range
+          in: header
+          required: false
+          description: A single byte range, e.g. `bytes=0-` or `bytes=1048576-2097151`.
+          schema:
+            type: string
+            maxLength: 100
+            pattern: '^bytes=\d*-\d*$'
+      responses:
+        '200':
+          description: The whole file.
+          headers:
+            Accept-Ranges:
+              $ref: '#/components/headers/AcceptRanges'
+            Content-Length:
+              $ref: '#/components/headers/ContentLength'
+            Content-Disposition:
+              $ref: '#/components/headers/ContentDisposition'
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '206':
+          description: The requested byte range.
+          headers:
+            Accept-Ranges:
+              $ref: '#/components/headers/AcceptRanges'
+            Content-Length:
+              $ref: '#/components/headers/ContentLength'
+            Content-Range:
+              description: Returned range and total size, e.g. `bytes 0-1048575/5242880`.
+              schema:
+                type: string
+                maxLength: 100
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          description: The token is missing, malformed or expired (`code` = `INVALID_STREAM_TOKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '403':
+          description: The token was issued for another track (`code` = `STREAM_TOKEN_MISMATCH`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+        '416':
+          description: The range is outside the file.
+          headers:
+            Content-Range:
+              description: Total size, e.g. `bytes */5242880`.
+              schema:
+                type: string
+                maxLength: 100
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    streamToken:
+      description: Signed token from `POST /api/streaming/{trackId}/token`.
+      type: apiKey
+      in: query
+      name: token
+
+  parameters:
+    TrackId:
+      name: trackId
+      in: path
+      required: true
+      description: Catalog track id.
+      schema:
+        $ref: '../common/schemas.yaml#/Id'
+
+  headers:
+    AcceptRanges:
+      schema:
+        type: string
+        enum: [bytes]
+    ContentLength:
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+    ContentDisposition:
+      description: '`inline` for STREAM tokens, `attachment; filename="..."` for OFFLINE tokens.'
+      schema:
+        type: string
+        maxLength: 300
+
+  responses:
+    PayloadTooLarge:
+      description: The file exceeds the size limit (500 MB for masters, 10 MB for covers).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../common/schemas.yaml#/ProblemDetail'
+    UnsupportedMediaType:
+      description: The file type is not accepted.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '../common/schemas.yaml#/ProblemDetail'
+
+  schemas:
+    TranscodingJobStatus:
+      description: |
+        - `QUEUED`: master stored, waiting for a worker.
+        - `PROCESSING`: transcoding in progress.
+        - `READY`: all qualities are available.
+        - `FAILED`: transcoding failed; see `failureReason`, then upload a new master.
+      type: string
+      enum: [QUEUED, PROCESSING, READY, FAILED]
+
+    AudioQuality:
+      description: |
+        - `LOW`: 96 kbps
+        - `NORMAL`: 160 kbps
+        - `HIGH`: 320 kbps
+      type: string
+      enum: [LOW, NORMAL, HIGH]
+
+    StreamTokenType:
+      description: '`STREAM` for online playback, `OFFLINE` for a downloadable copy.'
+      type: string
+      enum: [STREAM, OFFLINE]
+
+    MasterUploadRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          description: Master audio file (WAV, FLAC, AIFF or MP3), at most 500 MB.
+          type: string
+          format: binary
+
+    CoverUploadRequest:
+      type: object
+      required:
+        - file
+      properties:
+        file:
+          description: Square JPEG, PNG or WebP image, 500–5000 px per side, at most 10 MB.
+          type: string
+          format: binary
+
+    CoverUploadResponse:
+      type: object
+      required:
+        - trackId
+        - coverUrl
+        - uploadedAt
+      properties:
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        coverUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+        uploadedAt:
+          type: string
+          format: date-time
+
+    TranscodingStatus:
+      type: object
+      required:
+        - trackId
+        - status
+        - progressPercent
+        - availableQualities
+        - createdAt
+        - updatedAt
+      properties:
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        status:
+          $ref: '#/components/schemas/TranscodingJobStatus'
+        progressPercent:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+        availableQualities:
+          description: Qualities already transcoded. Empty until the first one is ready.
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AudioQuality'
+        durationSeconds:
+          description: Present once the master file has been analysed.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 21600
+        masterFileName:
+          description: Original name of the uploaded master file.
+          type: string
+          minLength: 1
+          maxLength: 255
+        masterSizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 524288000
+        failureReason:
+          description: Present only when `status` is `FAILED`.
+          type: string
+          maxLength: 1000
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    StreamToken:
+      type: object
+      required:
+        - token
+        - type
+        - expiresAt
+        - streamUrl
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        type:
+          $ref: '#/components/schemas/StreamTokenType'
+        expiresAt:
+          type: string
+          format: date-time
+        streamUrl:
+          description: Gateway-relative URL with the token, e.g. `/api/streaming/42?token=...`.
+          type: string
+          format: uri-reference
+          maxLength: 4096

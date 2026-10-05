@@ -1,0 +1,58 @@
+# Shared error responses. Every body is a ProblemDetail sent as application/problem+json.
+# Reference them as: $ref: '../common/responses.yaml#/<Name>'
+
+BadRequest:
+  description: The request is malformed or fails validation. `errors` lists the invalid fields.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/ProblemDetail'
+
+Unauthorized:
+  description: The access token is missing, malformed, expired or revoked.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/ProblemDetail'
+
+Forbidden:
+  description: The caller is authenticated but lacks the required role or does not own the resource.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/ProblemDetail'
+
+NotFound:
+  description: The requested resource does not exist (or is not visible to the caller).
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/ProblemDetail'
+
+Conflict:
+  description: The request conflicts with the current state of the resource.
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/ProblemDetail'
+
+UnprocessableEntity:
+  description: The request is well-formed, but refers to something that does not exist or cannot be used (for example an unknown genre).
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/ProblemDetail'
+
+TooManyRequests:
+  description: Rate limit exceeded. Retry after the number of seconds in `Retry-After`.
+  headers:
+    Retry-After:
+      description: Seconds to wait before retrying.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+  content:
+    application/problem+json:
+      schema:
+        $ref: './schemas.yaml#/ProblemDetail'

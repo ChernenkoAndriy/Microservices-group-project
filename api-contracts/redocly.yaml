@@ -1,0 +1,24 @@
+# Lint config: npx @redocly/cli lint (run from this directory)
+apis:
+  auth-service:
+    root: auth-service/openapi.yaml
+  catalog-service:
+    root: catalog-service/openapi.yaml
+  library-service:
+    root: library-service/openapi.yaml
+  streaming-service:
+    root: streaming-service/openapi.yaml
+  recommendation-service:
+    root: recommendation-service/openapi.yaml
+  notification-service:
+    root: notification-service/openapi.yaml
+
+extends:
+  - recommended
+
+rules:
+  info-license: off
+  # Servers point at the local gateway on purpose.
+  no-server-example.com: off
+  # GET /api/genres has no client-side failure mode.
+  operation-4xx-response: off

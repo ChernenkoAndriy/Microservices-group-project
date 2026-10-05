@@ -1,0 +1,139 @@
+# Shared schemas referenced by every service contract.
+# Reference them as: $ref: '../common/schemas.yaml#/<Name>'
+
+Id:
+  description: Database identifier. Positive 64-bit integer.
+  type: integer
+  format: int64
+  minimum: 1
+  example: 42
+
+Email:
+  description: Email address, compared case-insensitively. RFC 5321 caps the length at 254 characters.
+  type: string
+  format: email
+  minLength: 3
+  maxLength: 254
+  example: listener@example.com
+
+GenreSlug:
+  description: Stable, URL-safe genre key (lowercase letters, digits and single hyphens).
+  type: string
+  minLength: 2
+  maxLength: 50
+  pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+  example: indie-rock
+
+PageMetadata:
+  description: Paging information returned with every paged list.
+  type: object
+  required:
+    - number
+    - size
+    - totalElements
+    - totalPages
+  properties:
+    number:
+      description: Zero-based index of the returned page.
+      type: integer
+      format: int32
+      minimum: 0
+      example: 0
+    size:
+      description: Requested page size.
+      type: integer
+      format: int32
+      minimum: 1
+      maximum: 100
+      example: 20
+    totalElements:
+      description: Total number of items matching the request.
+      type: integer
+      format: int64
+      minimum: 0
+      example: 137
+    totalPages:
+      description: Total number of pages for the requested page size.
+      type: integer
+      format: int32
+      minimum: 0
+      example: 7
+
+ProblemDetail:
+  description: |
+    Error body in RFC 9457 "Problem Details" format (Spring's `ProblemDetail`), always sent as
+    `application/problem+json`. `code` and `errors` are Spotty extensions.
+  type: object
+  required:
+    - type
+    - title
+    - status
+  properties:
+    type:
+      description: URI identifying the problem type. `about:blank` when no specific type applies.
+      type: string
+      format: uri-reference
+      maxLength: 2048
+      example: about:blank
+    title:
+      description: Short, human-readable summary of the problem type.
+      type: string
+      minLength: 1
+      maxLength: 200
+      example: Bad Request
+    status:
+      description: HTTP status code, repeated for convenience.
+      type: integer
+      format: int32
+      minimum: 400
+      maximum: 599
+      example: 400
+    detail:
+      description: Human-readable explanation of this occurrence.
+      type: string
+      maxLength: 2000
+      example: Request validation failed.
+    instance:
+      description: Request path that produced the problem.
+      type: string
+      format: uri-reference
+      maxLength: 2048
+      example: /api/auth/register
+    code:
+      description: Stable machine-readable error code (UPPER_SNAKE_CASE) that clients can branch on.
+      type: string
+      minLength: 2
+      maxLength: 64
+      pattern: '^[A-Z][A-Z0-9_]*$'
+      example: VALIDATION_FAILED
+    errors:
+      description: Per-field validation errors. Present only for request validation failures.
+      type: array
+      maxItems: 100
+      items:
+        $ref: '#/FieldError'
+
+FieldError:
+  description: A single request validation failure.
+  type: object
+  required:
+    - field
+    - message
+  properties:
+    field:
+      description: Path of the invalid field or parameter, e.g. `displayName`, `genreSlugs[1]`, `size`.
+      type: string
+      minLength: 1
+      maxLength: 200
+      example: password
+    message:
+      description: Human-readable reason.
+      type: string
+      minLength: 1
+      maxLength: 500
+      example: size must be between 8 and 128
+    code:
+      description: Name of the violated constraint, e.g. `Size`, `NotNull`, `Pattern`.
+      type: string
+      maxLength: 64
+      example: Size

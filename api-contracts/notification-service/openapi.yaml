@@ -1,0 +1,416 @@
+openapi: 3.0.3
+info:
+  title: Spotty Notification Service API
+  version: 1.0.0
+  description: |
+    Notifications: email preferences, delivery log and email templates. Emails are sent only
+    in reaction to consumed events (`TrackPublishedEvent`, year-summary triggers), never through
+    a public endpoint.
+
+    Owned by **notification-service** (port 8085). All paths are reached through the API gateway.
+    Shared conventions are described in `api-contracts/README.md`.
+
+servers:
+  - url: http://localhost:8080
+    description: API gateway (local)
+
+tags:
+  - name: Preferences
+    description: The caller's email preferences.
+  - name: Delivery log
+    description: Administrator view of sent and failed notifications.
+  - name: Templates
+    description: Administrator management of email templates.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/notifications/preferences:
+    get:
+      tags: [Preferences]
+      operationId: getMyNotificationPreferences
+      summary: My email preferences
+      description: Users who never changed their preferences get the defaults (everything enabled).
+      responses:
+        '200':
+          description: The caller's preferences.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+    put:
+      tags: [Preferences]
+      operationId: updateMyNotificationPreferences
+      summary: Replace my email preferences
+      description: Full replacement; every field is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationPreferencesRequest'
+      responses:
+        '200':
+          description: The saved preferences.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/admin/notifications:
+    get:
+      tags: [Delivery log]
+      operationId: listNotificationLog
+      summary: Delivery log
+      description: '**Role:** ADMIN. Sorted by `createdAt`, newest first. Filters are combined with AND.'
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DeliveryStatus'
+        - name: recipientEmail
+          in: query
+          required: false
+          description: Exact match, case-insensitive.
+          schema:
+            $ref: '../common/schemas.yaml#/Email'
+        - name: templateCode
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/TemplateCode'
+        - name: createdFrom
+          in: query
+          required: false
+          description: Inclusive lower bound on `createdAt`.
+          schema:
+            type: string
+            format: date-time
+        - name: createdTo
+          in: query
+          required: false
+          description: Exclusive upper bound on `createdAt`. Must be after `createdFrom`.
+          schema:
+            type: string
+            format: date-time
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of log entries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationLogPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+
+  /api/admin/notification-templates:
+    get:
+      tags: [Templates]
+      operationId: listNotificationTemplates
+      summary: List email templates
+      description: '**Role:** ADMIN. All templates, sorted by `code`. Not paged; the set is small.'
+      responses:
+        '200':
+          description: All templates.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 200
+                items:
+                  $ref: '#/components/schemas/NotificationTemplate'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+    post:
+      tags: [Templates]
+      operationId: createNotificationTemplate
+      summary: Create an email template
+      description: '**Role:** ADMIN.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNotificationTemplateRequest'
+      responses:
+        '201':
+          description: Template created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationTemplate'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '409':
+          description: A template with this code already exists (`code` = `TEMPLATE_CODE_TAKEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+  /api/admin/notification-templates/{templateCode}:
+    parameters:
+      - name: templateCode
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/TemplateCode'
+    get:
+      tags: [Templates]
+      operationId: getNotificationTemplate
+      summary: Get an email template
+      description: '**Role:** ADMIN.'
+      responses:
+        '200':
+          description: The template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationTemplate'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+    put:
+      tags: [Templates]
+      operationId: updateNotificationTemplate
+      summary: Replace an email template
+      description: |
+        **Role:** ADMIN. Full replacement; omitting `description` clears it. The code cannot be changed.
+        Emails already queued keep the content they were rendered with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationTemplateRequest'
+      responses:
+        '200':
+          description: The updated template.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationTemplate'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '403':
+          $ref: '../common/responses.yaml#/Forbidden'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    DeliveryStatus:
+      description: |
+        - `PENDING`: queued, not yet attempted.
+        - `RETRYING`: a send attempt failed; another is scheduled.
+        - `SENT`: accepted by the mail server.
+        - `FAILED`: gave up after the last attempt.
+      type: string
+      enum: [PENDING, RETRYING, SENT, FAILED]
+
+    TemplateCode:
+      description: Stable template key in UPPER_SNAKE_CASE, e.g. `NEW_RELEASE`, `YEAR_SUMMARY`.
+      type: string
+      minLength: 2
+      maxLength: 64
+      pattern: '^[A-Z][A-Z0-9_]*$'
+      example: NEW_RELEASE
+
+    TemplateSubject:
+      description: Subject line template. Placeholders use `{{variable}}`.
+      type: string
+      minLength: 1
+      maxLength: 200
+      example: '{{artistName}} just released {{trackTitle}}'
+
+    TemplateBody:
+      description: HTML body template. Placeholders use `{{variable}}`; the available variables depend on the triggering event.
+      type: string
+      minLength: 1
+      maxLength: 100000
+
+    TemplateDescription:
+      description: Admin-facing note about when the template is used.
+      type: string
+      maxLength: 500
+
+    NotificationPreferences:
+      type: object
+      required:
+        - newReleases
+        - yearSummary
+      properties:
+        newReleases:
+          description: Email me when an artist I follow publishes a track.
+          type: boolean
+        yearSummary:
+          description: Email me my yearly listening summary.
+          type: boolean
+        updatedAt:
+          description: Absent until the user first saves preferences.
+          type: string
+          format: date-time
+
+    UpdateNotificationPreferencesRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - newReleases
+        - yearSummary
+      properties:
+        newReleases:
+          type: boolean
+        yearSummary:
+          type: boolean
+
+    NotificationLogEntry:
+      type: object
+      required:
+        - id
+        - recipientEmail
+        - templateCode
+        - subject
+        - status
+        - attempts
+        - createdAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        recipientEmail:
+          $ref: '../common/schemas.yaml#/Email'
+        templateCode:
+          $ref: '#/components/schemas/TemplateCode'
+        subject:
+          description: The rendered subject line.
+          type: string
+          minLength: 1
+          maxLength: 300
+        status:
+          $ref: '#/components/schemas/DeliveryStatus'
+        attempts:
+          description: Number of send attempts so far.
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+        failureReason:
+          description: Last error, present when `status` is `RETRYING` or `FAILED`.
+          type: string
+          maxLength: 1000
+        createdAt:
+          type: string
+          format: date-time
+        sentAt:
+          description: Present only when `status` is `SENT`.
+          type: string
+          format: date-time
+
+    NotificationLogPage:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/NotificationLogEntry'
+        page:
+          $ref: '../common/schemas.yaml#/PageMetadata'
+
+    NotificationTemplate:
+      type: object
+      required:
+        - code
+        - subject
+        - body
+        - active
+        - createdAt
+        - updatedAt
+      properties:
+        code:
+          $ref: '#/components/schemas/TemplateCode'
+        subject:
+          $ref: '#/components/schemas/TemplateSubject'
+        body:
+          $ref: '#/components/schemas/TemplateBody'
+        description:
+          $ref: '#/components/schemas/TemplateDescription'
+        active:
+          description: Inactive templates are not used; matching events are logged as `FAILED`.
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateNotificationTemplateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - subject
+        - body
+      properties:
+        code:
+          $ref: '#/components/schemas/TemplateCode'
+        subject:
+          $ref: '#/components/schemas/TemplateSubject'
+        body:
+          $ref: '#/components/schemas/TemplateBody'
+        description:
+          $ref: '#/components/schemas/TemplateDescription'
+        active:
+          type: boolean
+          default: true
+
+    UpdateNotificationTemplateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - subject
+        - body
+        - active
+      properties:
+        subject:
+          $ref: '#/components/schemas/TemplateSubject'
+        body:
+          $ref: '#/components/schemas/TemplateBody'
+        description:
+          $ref: '#/components/schemas/TemplateDescription'
+        active:
+          type: boolean

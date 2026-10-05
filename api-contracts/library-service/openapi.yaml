@@ -1,0 +1,258 @@
+openapi: 3.0.3
+info:
+  title: Spotty Library Service API
+  version: 1.0.0
+  description: |
+    User Library: the listener's own collection, i.e. liked tracks and followed artists
+    (playlists later).
+
+    Owned by **library-service** (port 8086). All paths are reached through the API gateway.
+    Shared conventions are described in `api-contracts/README.md`.
+
+    Responses contain ids only. Load track and artist details from the catalog service
+    (`GET /api/tracks?ids=...`, `GET /api/artists/{artistId}`).
+
+servers:
+  - url: http://localhost:8080
+    description: API gateway (local)
+
+tags:
+  - name: Likes
+    description: Liked / favourite tracks (Scenario 2).
+  - name: Follows
+    description: Followed artists.
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/library/likes:
+    get:
+      tags: [Likes]
+      operationId: listMyLikes
+      summary: My liked tracks
+      description: Sorted by `likedAt`, newest first.
+      parameters:
+        - name: trackIds
+          in: query
+          required: false
+          description: |
+            Return only likes for these tracks, comma-separated. Use it to check which tracks in a
+            list are liked.
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            uniqueItems: true
+            items:
+              $ref: '../common/schemas.yaml#/Id'
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of likes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LikePage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/library/likes/{trackId}:
+    parameters:
+      - name: trackId
+        in: path
+        required: true
+        schema:
+          $ref: '../common/schemas.yaml#/Id'
+    post:
+      tags: [Likes]
+      operationId: likeTrack
+      summary: Like a track
+      description: |
+        Idempotent. A new like returns 201 and emits `TrackLikedEvent {userId, trackId, timestamp}`.
+        Liking an already liked track returns 200 with the existing like and emits nothing.
+      responses:
+        '200':
+          description: The track was already liked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Like'
+        '201':
+          description: Like created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Like'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          description: No published track with this id (`code` = `TRACK_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+    delete:
+      tags: [Likes]
+      operationId: unlikeTrack
+      summary: Remove a like
+      description: |
+        Idempotent. Emits `TrackUnlikedEvent` only if a like was actually removed;
+        removing a missing like still returns 204.
+      responses:
+        '204':
+          description: The track is not liked (any more).
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/library/follows:
+    get:
+      tags: [Follows]
+      operationId: listMyFollows
+      summary: Artists I follow
+      description: Sorted by `followedAt`, newest first.
+      parameters:
+        - name: artistIds
+          in: query
+          required: false
+          description: Return only follows for these artists, comma-separated.
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            uniqueItems: true
+            items:
+              $ref: '../common/schemas.yaml#/Id'
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of follows.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FollowPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/library/follows/{artistId}:
+    parameters:
+      - name: artistId
+        in: path
+        required: true
+        schema:
+          $ref: '../common/schemas.yaml#/Id'
+    post:
+      tags: [Follows]
+      operationId: followArtist
+      summary: Follow an artist
+      description: |
+        Idempotent. A new follow returns 201 and emits `ArtistFollowedEvent`; notification-service
+        uses that event to keep its subscriber list for new-release emails (Scenario 1).
+        Following an already followed artist returns 200 and emits nothing.
+      responses:
+        '200':
+          description: The artist was already followed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Follow'
+        '201':
+          description: Follow created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Follow'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          description: No artist with this id (`code` = `ARTIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '409':
+          description: Artists cannot follow themselves (`code` = `SELF_FOLLOW_FORBIDDEN`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+    delete:
+      tags: [Follows]
+      operationId: unfollowArtist
+      summary: Unfollow an artist
+      description: Idempotent. Emits `ArtistUnfollowedEvent` only if a follow was actually removed.
+      responses:
+        '204':
+          description: The artist is not followed (any more).
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Like:
+      type: object
+      required:
+        - trackId
+        - likedAt
+      properties:
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        likedAt:
+          type: string
+          format: date-time
+
+    LikePage:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Like'
+        page:
+          $ref: '../common/schemas.yaml#/PageMetadata'
+
+    Follow:
+      type: object
+      required:
+        - artistId
+        - followedAt
+      properties:
+        artistId:
+          $ref: '../common/schemas.yaml#/Id'
+        followedAt:
+          type: string
+          format: date-time
+
+    FollowPage:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/Follow'
+        page:
+          $ref: '../common/schemas.yaml#/PageMetadata'
