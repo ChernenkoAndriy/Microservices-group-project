@@ -10,7 +10,7 @@ info:
     Shared conventions are described in `api-contracts/README.md`.
 
     Responses contain ids only. Load track and artist details from the catalog service
-    (`GET /api/tracks?ids=...`, `GET /api/artists/{artistId}`).
+    (`GET /api/v1/tracks?ids=...`, `GET /api/v1/artists/{artistId}`).
 
 servers:
   - url: http://localhost:8080
@@ -26,7 +26,7 @@ security:
   - bearerAuth: []
 
 paths:
-  /api/library/likes:
+  /api/v1/library/likes:
     get:
       tags: [Likes]
       operationId: listMyLikes
@@ -62,7 +62,7 @@ paths:
         '401':
           $ref: '../common/responses.yaml#/Unauthorized'
 
-  /api/library/likes/{trackId}:
+  /api/v1/library/likes/{trackId}:
     parameters:
       - name: trackId
         in: path
@@ -110,7 +110,7 @@ paths:
         '401':
           $ref: '../common/responses.yaml#/Unauthorized'
 
-  /api/library/follows:
+  /api/v1/library/follows:
     get:
       tags: [Follows]
       operationId: listMyFollows
@@ -144,7 +144,7 @@ paths:
         '401':
           $ref: '../common/responses.yaml#/Unauthorized'
 
-  /api/library/follows/{artistId}:
+  /api/v1/library/follows/{artistId}:
     parameters:
       - name: artistId
         in: path

@@ -1,5 +1,3 @@
-# Shared schemas referenced by every service contract.
-# Reference them as: $ref: '../common/schemas.yaml#/<Name>'
 
 Id:
   description: Database identifier. Positive 64-bit integer.
@@ -63,14 +61,14 @@ ProblemDetail:
   description: |
     Error body in RFC 9457 "Problem Details" format (Spring's `ProblemDetail`), always sent as
     `application/problem+json`. `code` and `errors` are Spotty extensions.
+    `type` is omitted when it is `about:blank`, as RFC 9457 allows (Spring does this).
   type: object
   required:
-    - type
     - title
     - status
   properties:
     type:
-      description: URI identifying the problem type. `about:blank` when no specific type applies.
+      description: URI identifying the problem type. Absent means `about:blank`.
       type: string
       format: uri-reference
       maxLength: 2048

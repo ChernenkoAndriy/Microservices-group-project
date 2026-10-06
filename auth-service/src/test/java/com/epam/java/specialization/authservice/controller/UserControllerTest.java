@@ -1,12 +1,13 @@
 package com.epam.java.specialization.authservice.controller;
 
-import com.epam.java.specialization.authservice.dto.UpdateProfileRequest;
-import com.epam.java.specialization.authservice.dto.UserResponse;
+import com.epam.java.specialization.authservice.api.dto.UpdateProfileRequestDto;
+import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
+import com.epam.java.specialization.authservice.api.dto.UserRoleDto;
+import com.epam.java.specialization.authservice.api.dto.UserStatusDto;
 import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
 import com.epam.java.specialization.authservice.jwt.JwtService;
-import com.epam.java.specialization.authservice.model.Role;
-import com.epam.java.specialization.authservice.model.UserStatus;
 import com.epam.java.specialization.authservice.service.UserService;
+import com.epam.java.specialization.authservice.web.CurrentUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+
 
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -34,7 +36,7 @@ class UserControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = ControllerTestSupport.mockMvc(new UserController(userService), jwtService);
+        mockMvc = ControllerTestSupport.mockMvc(new UserController(userService, new CurrentUser(jwtService)));
     }
 
     @Test
@@ -44,7 +46,7 @@ class UserControllerTest {
         mockMvc.perform(get("/api/v1/users/me").header("X-User-Id", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(5))
-                .andExpect(jsonPath("$.username").value("bob"));
+                .andExpect(jsonPath("$.displayName").value("bob"));
     }
 
     @Test
@@ -76,31 +78,33 @@ class UserControllerTest {
 
     @Test
     void updateMyProfile() throws Exception {
-        when(userService.updateProfile(5L, new UpdateProfileRequest("bobby", "https://cdn.example.com/a.png")))
-                .thenReturn(profile(5L, "bobby"));
+        UpdateProfileRequestDto request = new UpdateProfileRequestDto()
+                .displayName("bobby")
+                .avatarUrl("https://cdn.example.com/a.png");
+        when(userService.updateProfile(5L, request)).thenReturn(profile(5L, "bobby"));
 
         mockMvc.perform(patch("/api/v1/users/me").header("X-User-Id", "5")
                         .contentType(MediaType.APPLICATION_JSON).content("""
-                                {"username":"bobby","avatarUrl":"https://cdn.example.com/a.png"}
+                                {"displayName":"bobby","avatarUrl":"https://cdn.example.com/a.png"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("bobby"));
+                .andExpect(jsonPath("$.displayName").value("bobby"));
     }
 
     @Test
     void updateMyProfileValidatesFields() throws Exception {
         mockMvc.perform(patch("/api/v1/users/me").header("X-User-Id", "5")
                         .contentType(MediaType.APPLICATION_JSON).content("""
-                                {"username":"bobby ","avatarUrl":"not a url"}
+                                {"displayName":"bobby "}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.errors.length()").value(2));
+                .andExpect(jsonPath("$.errors[0].field").value("displayName"));
         verifyNoInteractions(userService);
     }
 
-    private static UserResponse profile(Long id, String username) {
-        return new UserResponse(id, username + "@example.com", username, Role.LISTENER, UserStatus.ACTIVE,
-                null, null, null);
+    private static UserProfileDto profile(Long id, String displayName) {
+        return new UserProfileDto(id, displayName + "@example.com", displayName, UserRoleDto.LISTENER,
+                UserStatusDto.ACTIVE, null, null);
     }
 }

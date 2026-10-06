@@ -1,14 +1,17 @@
 package com.epam.java.specialization.authservice.service;
 
-import com.epam.java.specialization.authservice.dto.AdminUpdateUserRequest;
-import com.epam.java.specialization.authservice.dto.UpdateProfileRequest;
-import com.epam.java.specialization.authservice.dto.UserPage;
-import com.epam.java.specialization.authservice.dto.UserResponse;
+import com.epam.java.specialization.authservice.api.dto.AdminUpdateUserRequestDto;
+import com.epam.java.specialization.authservice.api.dto.UpdateProfileRequestDto;
+import com.epam.java.specialization.authservice.api.dto.UserPageDto;
+import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
 import com.epam.java.specialization.authservice.exception.BadRequestException;
 import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
 import com.epam.java.specialization.authservice.exception.SelfModificationForbiddenException;
 import com.epam.java.specialization.authservice.exception.UserAlreadyExistsException;
+import com.epam.java.specialization.authservice.internal.api.dto.UserSummaryDto;
 import com.epam.java.specialization.authservice.jwt.RefreshTokenService;
+import com.epam.java.specialization.authservice.mapper.InternalUserMapper;
+import com.epam.java.specialization.authservice.mapper.UserMapper;
 import com.epam.java.specialization.authservice.model.Role;
 import com.epam.java.specialization.authservice.model.User;
 import com.epam.java.specialization.authservice.model.UserStatus;
@@ -21,6 +24,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collection;
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,81 +38,94 @@ public class UserService {
     private final RefreshTokenService refreshTokenService;
 
     @Transactional(readOnly = true)
-    public UserResponse getProfile(Long userId) {
-        return UserResponse.from(findUser(userId));
+    public UserProfileDto getProfile(Long userId) {
+        return UserMapper.toProfile(findUser(userId));
     }
 
     @Transactional
-    public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
-        if (request.isEmpty()) {
+    public UserProfileDto updateProfile(Long userId, UpdateProfileRequestDto request) {
+        if (request.getDisplayName() == null && request.getAvatarUrl() == null) {
             throw new BadRequestException("EMPTY_UPDATE", "At least one field must be present");
         }
         User user = findUser(userId);
 
-        if (request.username() != null && !request.username().equals(user.getUsername())) {
-            if (userRepository.existsByUsername(request.username())) {
-                throw UserAlreadyExistsException.usernameTaken(request.username());
+        String displayName = request.getDisplayName();
+        if (displayName != null && !displayName.equals(user.getUsername())) {
+            if (userRepository.existsByUsername(displayName)) {
+                throw UserAlreadyExistsException.usernameTaken(displayName);
             }
-            user.setUsername(request.username());
+            user.setUsername(displayName);
         }
-        if (request.avatarUrl() != null) {
-            user.setAvatarUrl(request.avatarUrl());
+        if (request.getAvatarUrl() != null) {
+            if (!isHttpUrl(request.getAvatarUrl())) {
+                throw new BadRequestException("INVALID_AVATAR_URL", "avatarUrl must be an absolute http(s) URL");
+            }
+            user.setAvatarUrl(request.getAvatarUrl());
         }
 
         User saved = userRepository.saveAndFlush(user);
         log.debug("Updated profile of user id={}", userId);
-        // TODO emit UserSnapshot once the message broker is in place
-        return UserResponse.from(saved);
+        return UserMapper.toProfile(saved);
     }
 
-    /**
-     * Newest users first.
-     */
     @Transactional(readOnly = true)
-    public UserPage listUsers(String q, Role role, UserStatus status, int page, int size) {
+    public UserPageDto listUsers(String q, Role role, UserStatus status, int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
-        return UserPage.from(userRepository.findAll(UserSpecifications.search(q, role, status), pageRequest));
+        return UserMapper.toPage(userRepository.findAll(UserSpecifications.search(q, role, status), pageRequest));
     }
 
-    /**
-     * Changes role and/or status. Blocking a user revokes all of their refresh tokens.
-     *
-     * @throws SelfModificationForbiddenException if an admin tries to block or demote themselves
-     */
     @Transactional
-    public UserResponse updateUser(Long callerId, Long userId, AdminUpdateUserRequest request) {
-        if (request.isEmpty()) {
+    public UserProfileDto updateUser(Long callerId, Long userId, AdminUpdateUserRequestDto request) {
+        Role role = UserMapper.toModel(request.getRole());
+        UserStatus status = UserMapper.toModel(request.getStatus());
+        if (role == null && status == null) {
             throw new BadRequestException("EMPTY_UPDATE", "At least one field must be present");
         }
         User user = findUser(userId);
 
-        boolean demotesSelf = request.role() != null && request.role() != Role.ADMIN;
-        boolean blocksSelf = request.status() == UserStatus.BLOCKED;
+        boolean demotesSelf = role != null && role != Role.ADMIN;
+        boolean blocksSelf = status == UserStatus.BLOCKED;
         if (userId.equals(callerId) && (demotesSelf || blocksSelf)) {
             throw new SelfModificationForbiddenException();
         }
 
-        if (request.role() != null) {
-            user.setRole(request.role());
+        if (role != null) {
+            user.setRole(role);
         }
-        if (request.status() != null) {
-            if (request.status() == UserStatus.BLOCKED && !user.isBlocked()) {
+        if (status != null) {
+            if (status == UserStatus.BLOCKED && !user.isBlocked()) {
                 refreshTokenService.revokeAll(userId);
             }
-            user.setStatus(request.status());
+            user.setStatus(status);
         }
 
         User saved = userRepository.saveAndFlush(user);
         log.debug("User id={} updated user id={}: role={} status={}", callerId, userId, saved.getRole(), saved.getStatus());
-        // TODO emit UserSnapshot once the message broker is in place
-        return UserResponse.from(saved);
+        return UserMapper.toProfile(saved);
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserByEmail(String email) {
+    public UserSummaryDto getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .map(UserResponse::from)
+                .map(InternalUserMapper::toSummary)
                 .orElseThrow(() -> new EntityDoesNotExistException("User with email " + email + " does not exist"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserSummaryDto> getUsersByIds(Collection<Long> ids) {
+        return userRepository.findAllById(ids).stream()
+                .map(InternalUserMapper::toSummary)
+                .toList();
+    }
+
+    private static boolean isHttpUrl(String value) {
+        try {
+            URI uri = new URI(value);
+            return uri.getHost() != null
+                    && ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()));
+        } catch (URISyntaxException e) {
+            return false;
+        }
     }
 
     private User findUser(Long userId) {

@@ -1,19 +1,17 @@
 package com.epam.java.specialization.streamingservice.controller;
 
+import com.epam.java.specialization.streamingservice.api.StreamingApi;
+import com.epam.java.specialization.streamingservice.api.dto.AudioQualityDto;
 import com.epam.java.specialization.streamingservice.service.StreamingStorageService;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.InputStream;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
-@RequestMapping("/api/v1/streaming")
-public class StreamingController {
+public class StreamingController implements StreamingApi {
 
     private final StreamingStorageService storageService;
 
@@ -21,27 +19,13 @@ public class StreamingController {
         this.storageService = storageService;
     }
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> upload(@RequestParam("file") MultipartFile file) {
+    @Override
+    public ResponseEntity<Resource> streamTrack(Long trackId, AudioQualityDto quality, String range) {
         try {
-            String fileName = file.getOriginalFilename();
-            storageService.uploadAudio(fileName, file);
-            return ResponseEntity.status(HttpStatus.CREATED).body("Файл успішно збережено в сховище: " + fileName);
+            return ResponseEntity.ok(new InputStreamResource(
+                    storageService.getAudioStream(StreamingStorageService.masterKey(trackId))));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Помилка завантаження: " + e.getMessage());
-        }
-    }
-
-    @GetMapping(value = "/{fileName}", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
-    public ResponseEntity<InputStreamResource> streamAudio(@PathVariable String fileName) {
-        try {
-            InputStream stream = storageService.getAudioStream(fileName);
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + fileName + "\"")
-                    .body(new InputStreamResource(stream));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No audio for track " + trackId, e);
         }
     }
 }

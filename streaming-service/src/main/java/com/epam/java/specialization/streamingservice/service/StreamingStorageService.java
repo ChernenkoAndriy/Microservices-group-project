@@ -21,6 +21,10 @@ public class StreamingStorageService {
         this.minioClient = minioClient;
     }
 
+    public static String masterKey(Long trackId) {
+        return trackId + "/master";
+    }
+
     public void uploadAudio(String fileName, MultipartFile file) throws Exception {
         try (InputStream inputStream = file.getInputStream()) {
             minioClient.putObject(

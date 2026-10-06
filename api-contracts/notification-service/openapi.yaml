@@ -26,7 +26,7 @@ security:
   - bearerAuth: []
 
 paths:
-  /api/notifications/preferences:
+  /api/v1/notifications/preferences:
     get:
       tags: [Preferences]
       operationId: getMyNotificationPreferences
@@ -64,7 +64,7 @@ paths:
         '401':
           $ref: '../common/responses.yaml#/Unauthorized'
 
-  /api/admin/notifications:
+  /api/v1/admin/notifications:
     get:
       tags: [Delivery log]
       operationId: listNotificationLog
@@ -117,7 +117,7 @@ paths:
         '403':
           $ref: '../common/responses.yaml#/Forbidden'
 
-  /api/admin/notification-templates:
+  /api/v1/admin/notification-templates:
     get:
       tags: [Templates]
       operationId: listNotificationTemplates
@@ -168,7 +168,7 @@ paths:
               schema:
                 $ref: '../common/schemas.yaml#/ProblemDetail'
 
-  /api/admin/notification-templates/{templateCode}:
+  /api/v1/admin/notification-templates/{templateCode}:
     parameters:
       - name: templateCode
         in: path

@@ -1,0 +1,170 @@
+openapi: 3.0.3
+info:
+  title: Spotty Auth Service Internal API
+  version: 1.0.0
+  description: |
+    Service-to-service endpoints of auth-service. They live under `/internal/**`, which the gateway
+    never routes, and every call must carry the shared service token in `X-Internal-Token`.
+
+    Consumers generate a client from this file (see `api-contracts/README.md`). catalog-service uses
+    `GET /internal/users?ids=` to add artist names to tracks with one call per page instead of one per track.
+
+servers:
+  - url: http://auth-service:8081
+    description: auth-service inside the compose network or the cluster
+
+tags:
+  - name: InternalTokens
+    description: Access token checks for other services.
+  - name: InternalUsers
+    description: User lookups for other services.
+
+security:
+  - internalToken: []
+
+paths:
+  /internal/auth/token-is-valid:
+    get:
+      tags: [InternalTokens]
+      operationId: isTokenValid
+      summary: Check an access token
+      parameters:
+        - $ref: '#/components/parameters/BearerToken'
+      responses:
+        '200':
+          description: Whether the token is valid. A missing token is not valid.
+          content:
+            application/json:
+              schema:
+                type: boolean
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /internal/auth/get-user-id-from-token:
+    get:
+      tags: [InternalTokens]
+      operationId: getUserIdFromToken
+      summary: Resolve the user id of an access token
+      parameters:
+        - $ref: '#/components/parameters/BearerToken'
+      responses:
+        '200':
+          description: The id of the token's user.
+          content:
+            application/json:
+              schema:
+                $ref: '../common/schemas.yaml#/Id'
+        '401':
+          description: The service token or the access token is missing or invalid (`code` = `TOKEN_IS_NOT_VALID`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+  /internal/users:
+    get:
+      tags: [InternalUsers]
+      operationId: getUsersByIds
+      summary: Batch lookup of users by id
+      description: |
+        Returns the users with the given ids, in no particular order. Unknown ids are skipped, so the
+        result can be shorter than the request. Use it instead of one call per user (N+1).
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          description: Comma-separated ids (`ids=1,2,3`).
+          style: form
+          explode: false
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            uniqueItems: true
+            items:
+              $ref: '../common/schemas.yaml#/Id'
+      responses:
+        '200':
+          description: The users that exist.
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 100
+                items:
+                  $ref: '#/components/schemas/UserSummary'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /internal/users/{email}:
+    get:
+      tags: [InternalUsers]
+      operationId: getUserByEmail
+      summary: Look up a user by email
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema:
+            $ref: '../common/schemas.yaml#/Email'
+      responses:
+        '200':
+          description: The user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+components:
+  securitySchemes:
+    internalToken:
+      description: Shared secret of the internal services (`INTERNAL_API_TOKEN`).
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+
+  parameters:
+    BearerToken:
+      name: Authorization
+      in: header
+      required: false
+      description: The access token to check, as `Bearer <token>`.
+      schema:
+        type: string
+        maxLength: 4200
+
+  schemas:
+    UserSummary:
+      description: What other services may know about a user.
+      type: object
+      required:
+        - id
+        - email
+        - displayName
+        - role
+        - status
+        - createdAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        email:
+          $ref: '../common/schemas.yaml#/Email'
+        displayName:
+          $ref: './openapi.yaml#/components/schemas/DisplayName'
+        role:
+          $ref: './openapi.yaml#/components/schemas/UserRole'
+        status:
+          $ref: './openapi.yaml#/components/schemas/UserStatus'
+        avatarUrl:
+          $ref: './openapi.yaml#/components/schemas/AvatarUrl'
+        createdAt:
+          type: string
+          format: date-time

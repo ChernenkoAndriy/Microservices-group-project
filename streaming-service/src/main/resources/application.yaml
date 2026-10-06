@@ -2,6 +2,13 @@ server:
   port: ${SERVER_PORT:8083}
 
 spring:
+  mvc:
+    problemdetails:
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true
   application:
     name: streaming-service
   servlet:

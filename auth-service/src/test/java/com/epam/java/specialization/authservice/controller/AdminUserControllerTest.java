@@ -1,13 +1,17 @@
 package com.epam.java.specialization.authservice.controller;
 
-import com.epam.java.specialization.authservice.dto.AdminUpdateUserRequest;
-import com.epam.java.specialization.authservice.dto.UserPage;
-import com.epam.java.specialization.authservice.dto.UserResponse;
+import com.epam.java.specialization.authservice.api.dto.AdminUpdateUserRequestDto;
+import com.epam.java.specialization.authservice.api.dto.PageMetadataDto;
+import com.epam.java.specialization.authservice.api.dto.UserPageDto;
+import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
+import com.epam.java.specialization.authservice.api.dto.UserRoleDto;
+import com.epam.java.specialization.authservice.api.dto.UserStatusDto;
 import com.epam.java.specialization.authservice.exception.SelfModificationForbiddenException;
 import com.epam.java.specialization.authservice.jwt.JwtService;
 import com.epam.java.specialization.authservice.model.Role;
 import com.epam.java.specialization.authservice.model.UserStatus;
 import com.epam.java.specialization.authservice.service.UserService;
+import com.epam.java.specialization.authservice.web.CurrentUser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class AdminUserControllerTest {
 
+    private static final AdminUpdateUserRequestDto BLOCK = new AdminUpdateUserRequestDto().status(UserStatusDto.BLOCKED);
+
     @Mock
     private UserService userService;
     @Mock
@@ -37,12 +43,12 @@ class AdminUserControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = ControllerTestSupport.mockMvc(new AdminUserController(userService), jwtService);
+        mockMvc = ControllerTestSupport.mockMvc(new AdminUserController(userService, new CurrentUser(jwtService)));
     }
 
     @Test
     void listUsersUsesDefaultPaging() throws Exception {
-        when(userService.listUsers(null, null, null, 0, 20)).thenReturn(page(user(1L, UserStatus.ACTIVE)));
+        when(userService.listUsers(null, null, null, 0, 20)).thenReturn(page(user(1L, UserStatusDto.ACTIVE)));
 
         mockMvc.perform(get("/api/v1/admin/users"))
                 .andExpect(status().isOk())
@@ -81,8 +87,7 @@ class AdminUserControllerTest {
 
     @Test
     void updateUserPassesCallerId() throws Exception {
-        when(userService.updateUser(1L, 2L, new AdminUpdateUserRequest(null, UserStatus.BLOCKED)))
-                .thenReturn(user(2L, UserStatus.BLOCKED));
+        when(userService.updateUser(1L, 2L, BLOCK)).thenReturn(user(2L, UserStatusDto.BLOCKED));
 
         mockMvc.perform(patch("/api/v1/admin/users/2").header("X-User-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON).content("""
@@ -94,8 +99,7 @@ class AdminUserControllerTest {
 
     @Test
     void updateUserMapsSelfModification() throws Exception {
-        when(userService.updateUser(1L, 1L, new AdminUpdateUserRequest(null, UserStatus.BLOCKED)))
-                .thenThrow(new SelfModificationForbiddenException());
+        when(userService.updateUser(1L, 1L, BLOCK)).thenThrow(new SelfModificationForbiddenException());
 
         mockMvc.perform(patch("/api/v1/admin/users/1").header("X-User-Id", "1")
                         .contentType(MediaType.APPLICATION_JSON).content("""
@@ -115,12 +119,13 @@ class AdminUserControllerTest {
         verifyNoInteractions(userService);
     }
 
-    private static UserResponse user(Long id, UserStatus status) {
-        return new UserResponse(id, "user" + id + "@example.com", "user" + id, Role.LISTENER, status,
-                null, null, null);
+    private static UserProfileDto user(Long id, UserStatusDto status) {
+        return new UserProfileDto(id, "user" + id + "@example.com", "user" + id, UserRoleDto.LISTENER, status,
+                null, null);
     }
 
-    private static UserPage page(UserResponse... users) {
-        return new UserPage(List.of(users), new UserPage.PageMetadata(0, 20, users.length, users.length == 0 ? 0 : 1));
+    private static UserPageDto page(UserProfileDto... users) {
+        return new UserPageDto(List.of(users),
+                new PageMetadataDto(0, 20, (long) users.length, users.length == 0 ? 0 : 1));
     }
 }

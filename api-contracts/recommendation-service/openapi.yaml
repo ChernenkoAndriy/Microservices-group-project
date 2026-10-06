@@ -9,7 +9,7 @@ info:
     Shared conventions are described in `api-contracts/README.md`.
 
     Responses contain track ids only. Load track details from the catalog service
-    (`GET /api/tracks?ids=...`).
+    (`GET /api/v1/tracks?ids=...`).
 
 servers:
   - url: http://localhost:8080
@@ -27,7 +27,7 @@ security:
   - bearerAuth: []
 
 paths:
-  /api/recommendations/me:
+  /api/v1/recommendations/me:
     get:
       tags: [Recommendations]
       operationId: getMyRecommendations
@@ -65,7 +65,7 @@ paths:
         '401':
           $ref: '../common/responses.yaml#/Unauthorized'
 
-  /api/analytics/plays:
+  /api/v1/analytics/plays:
     post:
       tags: [Analytics]
       operationId: reportPlay
@@ -89,7 +89,7 @@ paths:
         '429':
           $ref: '../common/responses.yaml#/TooManyRequests'
 
-  /api/charts/top:
+  /api/v1/charts/top:
     get:
       tags: [Charts]
       operationId: getTopChart

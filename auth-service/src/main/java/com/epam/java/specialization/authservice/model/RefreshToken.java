@@ -7,9 +7,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
 
-/**
- * Opaque, single-use refresh token. Only the SHA-256 hash of the token is stored.
- */
 @Entity
 @Table(name = "refresh_tokens")
 @Getter

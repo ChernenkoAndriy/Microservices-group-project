@@ -11,13 +11,6 @@ public class CorrelationIdRequestWrapper extends HttpServletRequestWrapper {
     private final String correlationId;
     private static final String CORRELATION_ID_HEADER = "X-Correlation-Id";
 
-    /**
-     * Constructs a request object wrapping the given request.
-     *
-     * @param request The request to wrap
-     * @param correlationId The correlation ID to set
-     * @throws IllegalArgumentException if the request is null
-     */
     public CorrelationIdRequestWrapper(HttpServletRequest request, String correlationId) {
         super(request);
         this.correlationId = correlationId;

@@ -9,7 +9,7 @@ info:
     through the API gateway. Shared conventions are described in `api-contracts/README.md`.
 
     Other services return only `trackId`s and `artistId`s. Clients load the details here,
-    for example `GET /api/tracks?ids=1,2,3`.
+    for example `GET /api/v1/tracks?ids=1,2,3`.
 
 servers:
   - url: http://localhost:8080
@@ -29,7 +29,7 @@ security:
   - bearerAuth: []
 
 paths:
-  /api/tracks:
+  /api/v1/tracks:
     get:
       tags: [Tracks]
       operationId: searchTracks
@@ -96,7 +96,11 @@ paths:
       description: |
         **Role:** ARTIST. Scenario 1, step 1. The track is created for the caller's artist
         profile with status `AWAITING_AUDIO`. Next, upload the master audio file through
-        `POST /api/media/{trackId}/master` (streaming-service).
+        `POST /api/v1/media/{trackId}/master` (streaming-service).
+        Send `Idempotency-Key` to make a retry safe: it returns the first 201 instead of creating
+        a second track.
+      parameters:
+        - $ref: '../common/parameters.yaml#/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -123,13 +127,16 @@ paths:
               schema:
                 $ref: '../common/schemas.yaml#/ProblemDetail'
         '422':
-          description: Unknown genre (`UNKNOWN_GENRE`), or the album does not exist or belongs to another artist (`ALBUM_NOT_USABLE`).
+          description: |
+            Unknown genre (`UNKNOWN_GENRE`), the album does not exist or belongs to another artist
+            (`ALBUM_NOT_USABLE`), or the `Idempotency-Key` was used with a different body
+            (`IDEMPOTENCY_KEY_REUSED`).
           content:
             application/problem+json:
               schema:
                 $ref: '../common/schemas.yaml#/ProblemDetail'
 
-  /api/tracks/{trackId}:
+  /api/v1/tracks/{trackId}:
     parameters:
       - $ref: '#/components/parameters/TrackId'
     get:
@@ -205,7 +212,7 @@ paths:
         '404':
           $ref: '../common/responses.yaml#/NotFound'
 
-  /api/artists/me/tracks:
+  /api/v1/artists/me/tracks:
     get:
       tags: [Artists]
       operationId: listMyTracks
@@ -233,7 +240,7 @@ paths:
         '403':
           $ref: '../common/responses.yaml#/Forbidden'
 
-  /api/artists/{artistId}:
+  /api/v1/artists/{artistId}:
     parameters:
       - $ref: '#/components/parameters/ArtistId'
     get:
@@ -251,7 +258,7 @@ paths:
         '404':
           $ref: '../common/responses.yaml#/NotFound'
 
-  /api/artists/{artistId}/tracks:
+  /api/v1/artists/{artistId}/tracks:
     parameters:
       - $ref: '#/components/parameters/ArtistId'
     get:
@@ -280,7 +287,7 @@ paths:
         '404':
           $ref: '../common/responses.yaml#/NotFound'
 
-  /api/artists/{artistId}/albums:
+  /api/v1/artists/{artistId}/albums:
     parameters:
       - $ref: '#/components/parameters/ArtistId'
     get:
@@ -304,7 +311,7 @@ paths:
         '404':
           $ref: '../common/responses.yaml#/NotFound'
 
-  /api/albums:
+  /api/v1/albums:
     post:
       tags: [Albums]
       operationId: createAlbum
@@ -330,7 +337,7 @@ paths:
         '403':
           $ref: '../common/responses.yaml#/Forbidden'
 
-  /api/albums/{albumId}:
+  /api/v1/albums/{albumId}:
     parameters:
       - name: albumId
         in: path
@@ -353,7 +360,7 @@ paths:
         '404':
           $ref: '../common/responses.yaml#/NotFound'
 
-  /api/genres:
+  /api/v1/genres:
     get:
       tags: [Genres]
       operationId: listGenres

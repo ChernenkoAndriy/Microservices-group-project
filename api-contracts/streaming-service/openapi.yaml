@@ -7,7 +7,7 @@ info:
     and audio streaming.
 
     Owned by **streaming-service** (port 8083). All paths are reached through the API gateway;
-    the gateway passes `Range` headers through and does not buffer `/api/streaming/**` responses.
+    the gateway passes `Range` headers through and does not buffer `/api/v1/streaming/**` responses.
     Shared conventions are described in `api-contracts/README.md`.
 
 servers:
@@ -24,7 +24,7 @@ security:
   - bearerAuth: []
 
 paths:
-  /api/media/{trackId}/master:
+  /api/v1/media/{trackId}/master:
     parameters:
       - $ref: '#/components/parameters/TrackId'
     post:
@@ -34,7 +34,7 @@ paths:
       description: |
         **Role:** ARTIST (owner of the track). Scenario 1. Accepts WAV, FLAC, AIFF or MP3 up to
         500 MB. Starts (or restarts, after `FAILED`) transcoding asynchronously; poll
-        `GET /api/media/{trackId}/status`. When it finishes, `AssetReadySnapshot` is emitted and the
+        `GET /api/v1/media/{trackId}/status`. When it finishes, `AssetReadySnapshot` is emitted and the
         catalog publishes the track.
       requestBody:
         required: true
@@ -71,7 +71,7 @@ paths:
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
 
-  /api/media/{trackId}/cover:
+  /api/v1/media/{trackId}/cover:
     parameters:
       - $ref: '#/components/parameters/TrackId'
     post:
@@ -115,7 +115,7 @@ paths:
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
 
-  /api/media/{trackId}/status:
+  /api/v1/media/{trackId}/status:
     parameters:
       - $ref: '#/components/parameters/TrackId'
     get:
@@ -141,7 +141,7 @@ paths:
               schema:
                 $ref: '../common/schemas.yaml#/ProblemDetail'
 
-  /api/streaming/{trackId}/token:
+  /api/v1/streaming/{trackId}/token:
     parameters:
       - $ref: '#/components/parameters/TrackId'
     post:
@@ -150,7 +150,7 @@ paths:
       summary: Issue a signed playback or download token
       description: |
         Returns a short-lived token bound to the caller, the track and the token type.
-        Pass it to `GET /api/streaming/{trackId}?token=...`; `streamUrl` already contains it.
+        Pass it to `GET /api/v1/streaming/{trackId}?token=...`; `streamUrl` already contains it.
         `STREAM` tokens live 5 minutes; `OFFLINE` tokens live 24 hours.
       parameters:
         - name: type
@@ -179,7 +179,7 @@ paths:
               schema:
                 $ref: '../common/schemas.yaml#/ProblemDetail'
 
-  /api/streaming/{trackId}:
+  /api/v1/streaming/{trackId}:
     parameters:
       - $ref: '#/components/parameters/TrackId'
     get:
@@ -275,7 +275,7 @@ components:
       scheme: bearer
       bearerFormat: JWT
     streamToken:
-      description: Signed token from `POST /api/streaming/{trackId}/token`.
+      description: Signed token from `POST /api/v1/streaming/{trackId}/token`.
       type: apiKey
       in: query
       name: token
@@ -450,7 +450,7 @@ components:
           type: string
           format: date-time
         streamUrl:
-          description: Gateway-relative URL with the token, e.g. `/api/streaming/42?token=...`.
+          description: Gateway-relative URL with the token, e.g. `/api/v1/streaming/42?token=...`.
           type: string
           format: uri-reference
           maxLength: 4096

@@ -1,4 +1,3 @@
-# --- Stage 1: Build ---
 FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /build
 
@@ -8,11 +7,11 @@ COPY build.gradle.kts settings.gradle.kts ./
 
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon
 
+COPY --from=contracts . /api-contracts
 COPY src ./src
 RUN ./gradlew bootJar --no-daemon -x test
 RUN java -Djarmode=tools -jar build/libs/*-SNAPSHOT.jar extract --layers --launcher --destination extracted
 
-# --- Stage 2: Runtime ---
 FROM eclipse-temurin:25-jre-alpine AS runner
 WORKDIR /app
 

@@ -58,10 +58,6 @@ public class JwtService {
         }
     }
 
-    /**
-     * @throws TokenIsNotValidException if the token is malformed, has a bad signature, is expired
-     *                                  or does not carry a numeric user id as its subject
-     */
     public Long extractUserId(String token) {
         String subject = parseClaims(token).getSubject();
         try {

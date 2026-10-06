@@ -15,10 +15,6 @@ public final class UserSpecifications {
     private UserSpecifications() {
     }
 
-    /**
-     * Matches users by a case-insensitive substring of email or username, and optionally by role and status.
-     * Null arguments are ignored.
-     */
     public static Specification<User> search(String q, Role role, UserStatus status) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();

@@ -2,6 +2,10 @@ server:
   port: ${SERVER_PORT:8082}
 
 spring:
+  jackson:
+    default-property-inclusion: non_null
+    deserialization:
+      fail-on-unknown-properties: true
   application:
     name: track-service
   jpa:
@@ -11,6 +15,33 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+internal-api:
+  token: ${INTERNAL_API_TOKEN:dev-internal-token}
+
+auth-client:
+  base-url: ${AUTH_SERVICE_URL:http://auth-service:8081}
+  internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
+  connect-timeout: 1s
+  read-timeout: 2s
+  circuit-breaker:
+    sliding-window-size: 10
+    minimum-number-of-calls: 5
+    failure-rate-threshold: 50
+    wait-duration-in-open-state: 10s
+    permitted-calls-in-half-open-state: 2
+  retry:
+    max-attempts: 3
+    initial-interval: 100ms
+    multiplier: 2
+    randomization-factor: 0.5
+  bulkhead:
+    max-concurrent-calls: 20
+    max-wait-duration: 50ms
+
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] [%X{traceId:-}] "
 
 management:
   endpoints:
@@ -22,3 +53,6 @@ management:
       probes:
         enabled: true
       show-details: always
+  tracing:
+    sampling:
+      probability: 1.0

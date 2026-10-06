@@ -1,11 +1,13 @@
 package com.epam.java.specialization.authservice.service;
 
-import com.epam.java.specialization.authservice.dto.LoginRequest;
-import com.epam.java.specialization.authservice.dto.RegisterRequest;
-import com.epam.java.specialization.authservice.dto.TokenResponse;
-import com.epam.java.specialization.authservice.dto.UserResponse;
+import com.epam.java.specialization.authservice.api.dto.LoginRequestDto;
+import com.epam.java.specialization.authservice.api.dto.RegisterRequestDto;
+import com.epam.java.specialization.authservice.api.dto.RegistrationRoleDto;
+import com.epam.java.specialization.authservice.api.dto.TokenResponseDto;
+import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
+import com.epam.java.specialization.authservice.api.dto.UserRoleDto;
+import com.epam.java.specialization.authservice.api.dto.UserStatusDto;
 import com.epam.java.specialization.authservice.exception.AccountBlockedException;
-import com.epam.java.specialization.authservice.exception.BadRequestException;
 import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
 import com.epam.java.specialization.authservice.exception.InvalidCredentialsException;
 import com.epam.java.specialization.authservice.exception.InvalidRefreshTokenException;
@@ -56,8 +58,8 @@ class AuthServiceTest {
     @Nested
     class Register {
 
-        private final RegisterRequest request =
-                new RegisterRequest("alice", "alice@example.com", Role.LISTENER, "password123");
+        private final RegisterRequestDto request =
+                new RegisterRequestDto("alice@example.com", "password123", "alice", RegistrationRoleDto.LISTENER);
 
         @Test
         void savesActiveUserWithHashedPassword() {
@@ -68,27 +70,17 @@ class AuthServiceTest {
                 return user;
             });
 
-            UserResponse response = authService.register(request);
+            UserProfileDto response = authService.register(request);
 
             ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
             verify(userRepository).save(saved.capture());
             assertThat(saved.getValue().getPasswordHash()).isEqualTo("hashed");
             assertThat(saved.getValue().getStatus()).isEqualTo(UserStatus.ACTIVE);
-            assertThat(response.id()).isEqualTo(1L);
-            assertThat(response.username()).isEqualTo("alice");
-            assertThat(response.email()).isEqualTo("alice@example.com");
-            assertThat(response.role()).isEqualTo(Role.LISTENER);
-            assertThat(response.status()).isEqualTo(UserStatus.ACTIVE);
-        }
-
-        @Test
-        void rejectsSelfAssignedAdminRole() {
-            RegisterRequest adminRequest = new RegisterRequest("root", "root@example.com", Role.ADMIN, "password123");
-
-            assertThatThrownBy(() -> authService.register(adminRequest))
-                    .isInstanceOf(BadRequestException.class)
-                    .extracting("code").isEqualTo("ROLE_NOT_ALLOWED");
-            verifyNoInteractions(userRepository);
+            assertThat(response.getId()).isEqualTo(1L);
+            assertThat(response.getDisplayName()).isEqualTo("alice");
+            assertThat(response.getEmail()).isEqualTo("alice@example.com");
+            assertThat(response.getRole()).isEqualTo(UserRoleDto.LISTENER);
+            assertThat(response.getStatus()).isEqualTo(UserStatusDto.ACTIVE);
         }
 
         @Test
@@ -115,7 +107,7 @@ class AuthServiceTest {
     @Nested
     class Login {
 
-        private final LoginRequest request = new LoginRequest("user1@example.com", "password123");
+        private final LoginRequestDto request = new LoginRequestDto("user1@example.com", "password123");
 
         @Test
         void issuesAccessAndRefreshTokens() {
@@ -124,9 +116,9 @@ class AuthServiceTest {
             when(passwordEncoder.matches("password123", "hashed-password")).thenReturn(true);
             stubTokenIssuing(user);
 
-            TokenResponse response = authService.login(request);
+            TokenResponseDto response = authService.login(request);
 
-            assertThat(response).isEqualTo(new TokenResponse("access", "Bearer", 600, "refresh", 2_592_000));
+            assertThat(response).isEqualTo(new TokenResponseDto("access", TokenResponseDto.TokenTypeEnum.BEARER, 600, "refresh", 2_592_000));
         }
 
         @Test
@@ -166,10 +158,10 @@ class AuthServiceTest {
             when(refreshTokenService.consume("old-refresh")).thenReturn(user);
             stubTokenIssuing(user);
 
-            TokenResponse response = authService.refresh("old-refresh");
+            TokenResponseDto response = authService.refresh("old-refresh");
 
-            assertThat(response.accessToken()).isEqualTo("access");
-            assertThat(response.refreshToken()).isEqualTo("refresh");
+            assertThat(response.getAccessToken()).isEqualTo("access");
+            assertThat(response.getRefreshToken()).isEqualTo("refresh");
         }
 
         @Test
