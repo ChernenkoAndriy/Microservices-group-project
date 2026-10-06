@@ -1,15 +1,18 @@
 package com.epam.java.specialization.authservice.controller;
 
-import com.epam.java.specialization.authservice.dto.LoginRequest;
-import com.epam.java.specialization.authservice.dto.RegisterRequest;
-import com.epam.java.specialization.authservice.dto.TokenResponse;
-import com.epam.java.specialization.authservice.dto.UserResponse;
+import com.epam.java.specialization.authservice.api.dto.LoginRequestDto;
+import com.epam.java.specialization.authservice.api.dto.RegisterRequestDto;
+import com.epam.java.specialization.authservice.api.dto.RegistrationRoleDto;
+import com.epam.java.specialization.authservice.api.dto.TokenResponseDto;
+import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
+import com.epam.java.specialization.authservice.api.dto.UserRoleDto;
+import com.epam.java.specialization.authservice.api.dto.UserStatusDto;
 import com.epam.java.specialization.authservice.exception.InvalidCredentialsException;
 import com.epam.java.specialization.authservice.exception.InvalidRefreshTokenException;
 import com.epam.java.specialization.authservice.exception.UserAlreadyExistsException;
-import com.epam.java.specialization.authservice.jwt.JwtService;
-import com.epam.java.specialization.authservice.model.Role;
-import com.epam.java.specialization.authservice.model.UserStatus;
+import com.epam.java.specialization.authservice.idempotency.IdempotencyRecord;
+import com.epam.java.specialization.authservice.idempotency.IdempotencyRecordRepository;
+import com.epam.java.specialization.authservice.idempotency.IdempotencyService;
 import com.epam.java.specialization.authservice.service.AuthService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,14 +21,22 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.Optional;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -35,27 +46,28 @@ class AuthControllerTest {
     @Mock
     private AuthService authService;
     @Mock
-    private JwtService jwtService;
+    private IdempotencyRecordRepository idempotencyRecords;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = ControllerTestSupport.mockMvc(new AuthController(authService), jwtService);
+        mockMvc = ControllerTestSupport.mockMvc(new AuthController(authService,
+                new IdempotencyService(idempotencyRecords, JsonMapper.builder().build(), Clock.systemUTC())));
     }
 
     @Test
     void registerReturnsCreatedUser() throws Exception {
-        when(authService.register(new RegisterRequest("alice", "alice@example.com", Role.LISTENER, "password123")))
-                .thenReturn(new UserResponse(1L, "alice@example.com", "alice", Role.LISTENER, UserStatus.ACTIVE,
-                        null, null, null));
+        when(authService.register(new RegisterRequestDto("alice@example.com", "password123", "alice", RegistrationRoleDto.LISTENER)))
+                .thenReturn(new UserProfileDto(1L, "alice@example.com", "alice", UserRoleDto.LISTENER, UserStatusDto.ACTIVE,
+                        null, null));
 
         mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"username":"alice","email":"alice@example.com","role":"LISTENER","password":"password123"}
+                        {"displayName":"alice","email":"alice@example.com","role":"LISTENER","password":"password123"}
                         """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.username").value("alice"))
+                .andExpect(jsonPath("$.displayName").value("alice"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.password").doesNotExist());
@@ -64,13 +76,13 @@ class AuthControllerTest {
     @Test
     void registerValidatesBody() throws Exception {
         mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"username":" alice","email":"not-an-email","password":"short"}
+                        {"displayName":" alice","email":"not-an-email","password":"short"}
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
                 .andExpect(jsonPath("$.errors[*].field")
-                        .value(containsInAnyOrder("username", "email", "role", "password")));
+                        .value(containsInAnyOrder("displayName", "email", "role", "password")));
         verifyNoInteractions(authService);
     }
 
@@ -79,7 +91,7 @@ class AuthControllerTest {
         when(authService.register(any())).thenThrow(UserAlreadyExistsException.emailTaken("alice@example.com"));
 
         mockMvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"username":"alice","email":"alice@example.com","role":"LISTENER","password":"password123"}
+                        {"displayName":"alice","email":"alice@example.com","role":"LISTENER","password":"password123"}
                         """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_REGISTERED"));
@@ -94,8 +106,8 @@ class AuthControllerTest {
 
     @Test
     void loginReturnsTokens() throws Exception {
-        when(authService.login(new LoginRequest("alice@example.com", "password123")))
-                .thenReturn(TokenResponse.bearer("access", 600, "refresh", 2_592_000));
+        when(authService.login(new LoginRequestDto("alice@example.com", "password123")))
+                .thenReturn(new TokenResponseDto("access", TokenResponseDto.TokenTypeEnum.BEARER, 600, "refresh", 2_592_000));
 
         mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("""
                         {"email":"alice@example.com","password":"password123"}
@@ -121,7 +133,7 @@ class AuthControllerTest {
 
     @Test
     void refreshReturnsNewTokens() throws Exception {
-        when(authService.refresh("old")).thenReturn(TokenResponse.bearer("access2", 600, "refresh2", 2_592_000));
+        when(authService.refresh("old")).thenReturn(new TokenResponseDto("access2", TokenResponseDto.TokenTypeEnum.BEARER, 600, "refresh2", 2_592_000));
 
         mockMvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content("""
                         {"refreshToken":"old"}
@@ -144,7 +156,7 @@ class AuthControllerTest {
     @Test
     void refreshRequiresToken() throws Exception {
         mockMvc.perform(post("/api/v1/auth/refresh").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"refreshToken":"  "}
+                        {"refreshToken":""}
                         """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("refreshToken"));
@@ -158,4 +170,81 @@ class AuthControllerTest {
                 .andExpect(status().isNoContent());
         verify(authService).logout("refresh");
     }
+
+    @Test
+    void registerWithIdempotencyKeyStoresTheResponse() throws Exception {
+        when(authService.register(any())).thenReturn(new UserProfileDto(1L, "alice@example.com", "alice",
+                UserRoleDto.LISTENER, UserStatusDto.ACTIVE, null, null));
+
+        mockMvc.perform(post("/api/v1/auth/register").header("Idempotency-Key", "key-1")
+                        .contentType(MediaType.APPLICATION_JSON).content(REGISTER_ALICE))
+                .andExpect(status().isCreated())
+                .andExpect(header().doesNotExist(IdempotencyService.REPLAYED_HEADER));
+        verify(idempotencyRecords).save(any(IdempotencyRecord.class));
+    }
+
+    @Test
+    void registerRepeatWithSameKeyReplaysFirstResponse() throws Exception {
+        when(authService.register(any())).thenReturn(new UserProfileDto(1L, "alice@example.com", "alice",
+                UserRoleDto.LISTENER, UserStatusDto.ACTIVE, null, null));
+        mockMvc.perform(post("/api/v1/auth/register").header("Idempotency-Key", "key-1")
+                .contentType(MediaType.APPLICATION_JSON).content(REGISTER_ALICE));
+        var stored = org.mockito.ArgumentCaptor.forClass(IdempotencyRecord.class);
+        verify(idempotencyRecords).save(stored.capture());
+        when(idempotencyRecords.findById("register:key-1")).thenReturn(Optional.of(stored.getValue()));
+
+        mockMvc.perform(post("/api/v1/auth/register").header("Idempotency-Key", "key-1")
+                        .contentType(MediaType.APPLICATION_JSON).content(REGISTER_ALICE))
+                .andExpect(status().isCreated())
+                .andExpect(header().string(IdempotencyService.REPLAYED_HEADER, "true"))
+                .andExpect(jsonPath("$.id").value(1));
+        verify(authService).register(any());
+    }
+
+    @Test
+    void registerReusingKeyWithOtherBodyIsUnprocessable() throws Exception {
+        when(idempotencyRecords.findById("register:key-1")).thenReturn(Optional.of(new IdempotencyRecord(
+                "register:key-1", "another-hash", 201, "{}", Instant.now(), Instant.now().plusSeconds(60))));
+
+        mockMvc.perform(post("/api/v1/auth/register").header("Idempotency-Key", "key-1")
+                        .contentType(MediaType.APPLICATION_JSON).content(REGISTER_ALICE))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("IDEMPOTENCY_KEY_REUSED"));
+        verify(authService, never()).register(any());
+    }
+
+    @Test
+    void wrongMethodIsProblemDetail() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/login"))
+                .andExpect(status().isMethodNotAllowed())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(405))
+                .andExpect(jsonPath("$.code").value("METHOD_NOT_ALLOWED"));
+    }
+
+    @Test
+    void unknownPathIsProblemDetail() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/nope"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void unexpectedErrorIsProblemDetail() throws Exception {
+        when(authService.login(any())).thenThrow(new IllegalStateException("boom"));
+
+        mockMvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"email":"alice@example.com","password":"password123"}
+                        """))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.detail").value("An unexpected error occurred."));
+    }
+
+    private static final String REGISTER_ALICE = """
+            {"displayName":"alice","email":"alice@example.com","role":"LISTENER","password":"password123"}
+            """;
 }

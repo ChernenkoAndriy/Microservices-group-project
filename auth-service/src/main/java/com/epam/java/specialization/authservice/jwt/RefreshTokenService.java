@@ -17,9 +17,6 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.HexFormat;
 
-/**
- * Issues, rotates and revokes opaque refresh tokens. Only SHA-256 hashes are persisted.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -31,9 +28,6 @@ public class RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtProperties properties;
 
-    /**
-     * @return the raw token, to be handed to the client once
-     */
     @Transactional
     public String issue(User user) {
         byte[] bytes = new byte[TOKEN_BYTES];
@@ -50,12 +44,6 @@ public class RefreshTokenService {
         return rawToken;
     }
 
-    /**
-     * Revokes the given token and returns its owner. Reusing an already revoked token is treated
-     * as theft: every refresh token of that user is revoked.
-     *
-     * @throws InvalidRefreshTokenException if the token is unknown, expired or revoked
-     */
     @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
     public User consume(String rawToken) {
         RefreshToken token = refreshTokenRepository.findForRotationByTokenHash(hash(rawToken))
@@ -76,9 +64,6 @@ public class RefreshTokenService {
         return user;
     }
 
-    /**
-     * Idempotent: unknown or already revoked tokens are ignored.
-     */
     @Transactional
     public void revoke(String rawToken) {
         refreshTokenRepository.findByTokenHash(hash(rawToken))

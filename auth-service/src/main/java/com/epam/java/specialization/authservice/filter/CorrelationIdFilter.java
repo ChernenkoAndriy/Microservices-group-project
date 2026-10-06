@@ -13,10 +13,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
-/**
- * Takes the X-Correlation-Id header from the request (or generates one when it is absent),
- * puts it into the logging MDC for the duration of the request and echoes it in the response.
- */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class CorrelationIdFilter extends OncePerRequestFilter {

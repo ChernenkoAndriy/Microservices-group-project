@@ -4,9 +4,6 @@ import com.epam.java.specialization.authservice.model.Role;
 import com.epam.java.specialization.authservice.model.User;
 import com.epam.java.specialization.authservice.model.UserStatus;
 
-/**
- * Builds {@link User} fixtures for tests.
- */
 public final class TestUsers {
 
     private TestUsers() {

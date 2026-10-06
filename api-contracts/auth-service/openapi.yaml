@@ -34,7 +34,10 @@ paths:
         Creates an `ACTIVE` account with the requested role. `ADMIN` cannot be self-assigned.
         Registering as `ARTIST` also creates the artist's catalog profile, whose `artistId`
         equals the new user's `id`. Rate limited per client IP.
+        Send `Idempotency-Key` to make a retry safe: it returns the first 201 instead of 409.
       security: []
+      parameters:
+        - $ref: '../common/parameters.yaml#/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -56,6 +59,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: '../common/schemas.yaml#/ProblemDetail'
+        '422':
+          $ref: '../common/responses.yaml#/IdempotencyKeyReused'
         '429':
           $ref: '../common/responses.yaml#/TooManyRequests'
 

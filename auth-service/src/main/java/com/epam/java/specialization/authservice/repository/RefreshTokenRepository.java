@@ -14,9 +14,6 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
 
     Optional<RefreshToken> findByTokenHash(String tokenHash);
 
-    /**
-     * Locks the row so two concurrent refreshes with the same token cannot both succeed.
-     */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from RefreshToken t join fetch t.user where t.tokenHash = :tokenHash")
     Optional<RefreshToken> findForRotationByTokenHash(@Param("tokenHash") String tokenHash);

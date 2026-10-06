@@ -7,10 +7,6 @@ public final class BearerTokens {
     private BearerTokens() {
     }
 
-    /**
-     * @return the token from an {@code Authorization} header value (with or without the {@code Bearer} prefix),
-     * or {@code null} if the header is missing or blank
-     */
     public static String extract(String authorization) {
         if (authorization == null || authorization.isBlank()) {
             return null;

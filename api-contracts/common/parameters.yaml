@@ -1,4 +1,3 @@
-# Shared query parameters. Reference them as: $ref: '../common/parameters.yaml#/<Name>'
 
 Page:
   name: page
@@ -23,3 +22,17 @@ Size:
     minimum: 1
     maximum: 100
     default: 20
+
+IdempotencyKey:
+  name: Idempotency-Key
+  in: header
+  required: false
+  description: |
+    Client-generated unique key (a UUID is recommended) that makes the POST safe to retry.
+    A repeat with the same key and the same body returns the stored first response instead of
+    performing the operation again. Reusing a key with a different body returns 422
+    (`code` = `IDEMPOTENCY_KEY_REUSED`). Keys are kept for 24 hours.
+  schema:
+    type: string
+    minLength: 1
+    maxLength: 255

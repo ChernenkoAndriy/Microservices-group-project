@@ -1,29 +1,28 @@
 package com.epam.java.specialization.authservice.controller;
 
-import com.epam.java.specialization.authservice.dto.UpdateProfileRequest;
-import com.epam.java.specialization.authservice.dto.UserResponse;
+import com.epam.java.specialization.authservice.api.ProfileApi;
+import com.epam.java.specialization.authservice.api.dto.UpdateProfileRequestDto;
+import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
 import com.epam.java.specialization.authservice.service.UserService;
-import com.epam.java.specialization.authservice.web.CurrentUserId;
-import jakarta.validation.Valid;
+import com.epam.java.specialization.authservice.web.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserController implements ProfileApi {
 
     private final UserService userService;
+    private final CurrentUser currentUser;
 
-    @GetMapping("/me")
-    public ResponseEntity<UserResponse> getMyProfile(@CurrentUserId Long userId) {
-        return ResponseEntity.ok(userService.getProfile(userId));
+    @Override
+    public ResponseEntity<UserProfileDto> getMyProfile() {
+        return ResponseEntity.ok(userService.getProfile(currentUser.id()));
     }
 
-    @PatchMapping("/me")
-    public ResponseEntity<UserResponse> updateMyProfile(@CurrentUserId Long userId,
-                                                        @Valid @RequestBody UpdateProfileRequest request) {
-        return ResponseEntity.ok(userService.updateProfile(userId, request));
+    @Override
+    public ResponseEntity<UserProfileDto> updateMyProfile(UpdateProfileRequestDto request) {
+        return ResponseEntity.ok(userService.updateProfile(currentUser.id(), request));
     }
 }

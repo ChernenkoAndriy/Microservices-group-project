@@ -1,0 +1,74 @@
+openapi: 3.0.3
+info:
+  title: Spotty Catalog Service Internal API
+  version: 1.0.0
+  description: |
+    Service-to-service endpoints of catalog-service (`track-service/`). They live under `/internal/**`,
+    which the gateway never routes, and every call must carry the shared service token in `X-Internal-Token`.
+
+    `publishTrack` is the hook streaming-service calls when transcoding finishes. It is synchronous until
+    the message broker is in place, after which it becomes the `AssetReadySnapshot` consumer.
+
+servers:
+  - url: http://catalog-service:8082
+    description: catalog-service inside the compose network or the cluster
+
+tags:
+  - name: InternalTracks
+    description: Track lifecycle changes made by other services.
+
+security:
+  - internalToken: []
+
+paths:
+  /internal/tracks/{trackId}/publish:
+    post:
+      tags: [InternalTracks]
+      operationId: publishTrack
+      summary: Publish a track whose audio is ready
+      description: |
+        Moves the track to `PUBLISHED`, sets `publishedAt` on the first publication and `releaseDate`
+        if the artist did not set one. Publishing a published track only updates `durationSeconds`.
+      parameters:
+        - name: trackId
+          in: path
+          required: true
+          schema:
+            $ref: '../common/schemas.yaml#/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishTrackRequest'
+      responses:
+        '204':
+          description: Track published.
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
+components:
+  securitySchemes:
+    internalToken:
+      description: Shared secret of the internal services (`INTERNAL_API_TOKEN`).
+      type: apiKey
+      in: header
+      name: X-Internal-Token
+
+  schemas:
+    PublishTrackRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - durationSeconds
+      properties:
+        durationSeconds:
+          description: Length of the transcoded audio.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 21600

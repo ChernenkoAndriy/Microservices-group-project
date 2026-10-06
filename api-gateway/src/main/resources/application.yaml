@@ -9,8 +9,6 @@ spring:
       server:
         webmvc:
           routes:
-            # Admin routes are split by owning service and listed before the general routes.
-            # The admin role is not enforced here yet.
             - id: admin-users
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
@@ -26,7 +24,7 @@ spring:
             - id: tracks
               uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
               predicates:
-                - Path=/api/v1/tracks/**
+                - Path=/api/v1/tracks/**,/api/v1/artists/**,/api/v1/albums/**,/api/v1/genres/**
             - id: library
               uri: ${LIBRARY_SERVICE_URL:http://localhost:8086}
               predicates:
@@ -34,11 +32,11 @@ spring:
             - id: streaming
               uri: ${STREAMING_SERVICE_URL:http://localhost:8083}
               predicates:
-                - Path=/api/v1/streaming/**
+                - Path=/api/v1/streaming/**,/api/v1/media/**
             - id: recommendations
               uri: ${RECOMMENDATION_SERVICE_URL:http://localhost:8084}
               predicates:
-                - Path=/api/v1/recommendations/**
+                - Path=/api/v1/recommendations/**,/api/v1/analytics/**,/api/v1/charts/**
             - id: notifications
               uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
               predicates:
