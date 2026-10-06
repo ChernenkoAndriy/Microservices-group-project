@@ -26,9 +26,9 @@ public class ArtistDirectory {
 
     private final InternalUsersApi usersApi;
 
-    @Retry(name = AUTH_SERVICE, fallbackMethod = "fallback")
-    @CircuitBreaker(name = AUTH_SERVICE)
     @Bulkhead(name = AUTH_SERVICE)
+    @CircuitBreaker(name = AUTH_SERVICE)
+    @Retry(name = AUTH_SERVICE, fallbackMethod = "fallback")
     public ArtistProfiles findProfiles(Collection<Long> artistIds) {
         if (artistIds.isEmpty()) {
             return new ArtistProfiles(Map.of(), true);
@@ -36,9 +36,9 @@ public class ArtistDirectory {
         return fetch(new LinkedHashSet<>(artistIds));
     }
 
-    @Retry(name = AUTH_SERVICE, fallbackMethod = "fallback")
-    @CircuitBreaker(name = AUTH_SERVICE)
     @Bulkhead(name = AUTH_SERVICE)
+    @CircuitBreaker(name = AUTH_SERVICE)
+    @Retry(name = AUTH_SERVICE, fallbackMethod = "fallback")
     public ArtistProfiles findProfile(Long artistId) {
         return fetch(Set.of(artistId));
     }
