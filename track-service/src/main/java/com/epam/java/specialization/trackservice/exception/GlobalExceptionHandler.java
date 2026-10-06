@@ -20,6 +20,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +33,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ApiException.class)
     public ProblemDetail handleApiException(ApiException e) {
         log.warn("{}: {}", e.getCode(), e.getMessage());
-        return problem(e.getStatus(), e.getCode(), e.getMessage());
+        return problem(e.getStatus(), e.getCode(), e.getType(), e.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -48,13 +49,13 @@ public class GlobalExceptionHandler {
         List<Map<String, String>> errors = e.getParameterValidationResults().stream()
                 .flatMap(result -> result instanceof ParameterErrors bodyErrors
                         ? bodyErrors.getFieldErrors().stream()
-                                .map(error -> fieldError(error.getField(), error.getDefaultMessage(), error.getCode()))
+                        .map(error -> fieldError(error.getField(), error.getDefaultMessage(), error.getCode()))
                         : result.getResolvableErrors().stream()
-                                .map(error -> fieldError(
-                                        result.getMethodParameter().getParameterName(),
-                                        error.getDefaultMessage(),
-                                        error.getCodes() != null && error.getCodes().length > 0
-                                                ? error.getCodes()[error.getCodes().length - 1] : null)))
+                        .map(error -> fieldError(
+                                result.getMethodParameter().getParameterName(),
+                                error.getDefaultMessage(),
+                                error.getCodes() != null && error.getCodes().length > 0
+                                        ? error.getCodes()[error.getCodes().length - 1] : null)))
                 .toList();
         return validationProblem(errors);
     }
@@ -84,7 +85,11 @@ public class GlobalExceptionHandler {
         ErrorResponse error = (ErrorResponse) e;
         ProblemDetail problem = error.getBody();
         HttpStatus status = HttpStatus.valueOf(error.getStatusCode().value());
+
+        // Ensure type and code conform to your API standard
+        problem.setType(ApiException.toTypeUri(status.name()));
         problem.setProperty("code", status.name());
+
         log.warn("{}: {}", status, e.getMessage());
         return ResponseEntity.status(status).headers(error.getHeaders()).body(problem);
     }
@@ -109,7 +114,12 @@ public class GlobalExceptionHandler {
     }
 
     private ProblemDetail problem(HttpStatus status, String code, String detail) {
+        return problem(status, code, ApiException.toTypeUri(code), detail);
+    }
+
+    private ProblemDetail problem(HttpStatus status, String code, URI type, String detail) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
+        problem.setType(type != null ? type : URI.create("about:blank"));
         problem.setProperty("code", code);
         return problem;
     }
