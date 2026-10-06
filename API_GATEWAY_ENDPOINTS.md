@@ -26,72 +26,72 @@ Roles: **Listener**, **Artist**, **Administrator**.
 
 ## 3. Endpoints the gateway should register
 
-Auth column: **public** = no token; **user** = any authenticated role; **artist** / **admin** = that role required. All paths keep the existing `/api/...` convention, so the gateway can route by path prefix without rewriting.
+Auth column: **public** = no token; **user** = any authenticated role; **artist** / **admin** = that role required. All public paths are versioned as `/api/v1/...` (a breaking change goes to `/api/v2/...` while v1 keeps running), so the gateway can route by path prefix without rewriting. Service-to-service endpoints use `/internal/...`, are not versioned and are never routed.
 
 ### 3.1 Identity (→ auth-service)
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/api/auth/register` | public | Register a listener or artist account (exists today) |
-| POST | `/api/auth/login` | public | Exchange credentials for access + refresh JWT |
-| POST | `/api/auth/refresh` | public (refresh token) | Rotate tokens |
-| POST | `/api/auth/logout` | user | Revoke the refresh token / session |
-| GET | `/api/users/me` | user | Current user's profile |
-| PATCH | `/api/users/me` | user | Update profile (emits `UserSnapshot`) |
-| GET | `/api/admin/users` | admin | List or search users |
-| PATCH | `/api/admin/users/{id}` | admin | Change role or status (block/unblock) |
+| POST | `/api/v1/auth/register` | public | Register a listener or artist account (exists today) |
+| POST | `/api/v1/auth/login` | public | Exchange credentials for access + refresh JWT |
+| POST | `/api/v1/auth/refresh` | public (refresh token) | Rotate tokens |
+| POST | `/api/v1/auth/logout` | user | Revoke the refresh token / session |
+| GET | `/api/v1/users/me` | user | Current user's profile |
+| PATCH | `/api/v1/users/me` | user | Update profile (emits `UserSnapshot`) |
+| GET | `/api/v1/admin/users` | admin | List or search users |
+| PATCH | `/api/v1/admin/users/{id}` | admin | Change role or status (block/unblock) |
 
-Not exposed: the existing `GET /api/auth/users/{email}` is a raw user lookup by email and should stay internal. A JWKS / public-key endpoint, if used, is consumed by the gateway internally rather than routed.
+Not exposed: service-to-service endpoints live under `/internal/**` (`/internal/auth/token-is-valid`, `/internal/auth/get-user-id-from-token`, and the raw lookup `/internal/users/{email}`). The gateway must not route `/internal/**`. A JWKS / public-key endpoint, if used, is consumed by the gateway internally rather than routed.
 
 ### 3.2 Catalog (→ track-service / `catalog-service`)
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/tracks` | public | Search and browse tracks (`q`, `genre`, `artistId`, paging) |
-| GET | `/api/tracks/{id}` | public | Track details (exists today) |
-| POST | `/api/tracks` | artist | Create track metadata; status becomes "awaiting audio" (Scenario 1; exists today without auth) |
-| PATCH | `/api/tracks/{id}` | artist (owner) | Edit metadata |
-| DELETE | `/api/tracks/{id}` | artist (owner) / admin | Remove or unpublish a track |
-| GET | `/api/artists/{id}` | public | Artist page |
-| GET | `/api/artists/{id}/tracks` | public | Artist's published tracks |
-| GET | `/api/artists/{id}/albums` | public | Artist's albums |
-| GET | `/api/artists/me/tracks` | artist | Artist dashboard: own tracks incl. drafts and processing status |
-| GET | `/api/albums/{id}` | public | Album with its tracks |
-| POST | `/api/albums` | artist | Create album |
-| GET | `/api/genres` | public | Genre list |
+| GET | `/api/v1/tracks` | public | Search and browse tracks (`q`, `genre`, `artistId`, paging) |
+| GET | `/api/v1/tracks/{id}` | public | Track details (exists today) |
+| POST | `/api/v1/tracks` | artist | Create track metadata; status becomes "awaiting audio" (Scenario 1; exists today without auth) |
+| PATCH | `/api/v1/tracks/{id}` | artist (owner) | Edit metadata |
+| DELETE | `/api/v1/tracks/{id}` | artist (owner) / admin | Remove or unpublish a track |
+| GET | `/api/v1/artists/{id}` | public | Artist page |
+| GET | `/api/v1/artists/{id}/tracks` | public | Artist's published tracks |
+| GET | `/api/v1/artists/{id}/albums` | public | Artist's albums |
+| GET | `/api/v1/artists/me/tracks` | artist | Artist dashboard: own tracks incl. drafts and processing status |
+| GET | `/api/v1/albums/{id}` | public | Album with its tracks |
+| POST | `/api/v1/albums` | artist | Create album |
+| GET | `/api/v1/genres` | public | Genre list |
 
 ### 3.3 User library (→ library-service)
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/api/library/likes/{trackId}` | user | Like / add to favourites (Scenario 2, emits `TrackLikedEvent`) |
-| DELETE | `/api/library/likes/{trackId}` | user | Remove like (emits `TrackUnlikedEvent`) |
-| GET | `/api/library/likes` | user | My liked / favourite tracks |
-| POST | `/api/library/follows/{artistId}` | user | Follow an artist (emits `ArtistFollowedEvent`; Notification keeps its own subscriber list for Scenario 1) |
-| DELETE | `/api/library/follows/{artistId}` | user | Unfollow (emits `ArtistUnfollowedEvent`) |
-| GET | `/api/library/follows` | user | Artists I follow |
+| POST | `/api/v1/library/likes/{trackId}` | user | Like / add to favourites (Scenario 2, emits `TrackLikedEvent`) |
+| DELETE | `/api/v1/library/likes/{trackId}` | user | Remove like (emits `TrackUnlikedEvent`) |
+| GET | `/api/v1/library/likes` | user | My liked / favourite tracks |
+| POST | `/api/v1/library/follows/{artistId}` | user | Follow an artist (emits `ArtistFollowedEvent`; Notification keeps its own subscriber list for Scenario 1) |
+| DELETE | `/api/v1/library/follows/{artistId}` | user | Unfollow (emits `ArtistUnfollowedEvent`) |
+| GET | `/api/v1/library/follows` | user | Artists I follow |
 
-Note: the architecture doc's Scenario 2 names `POST /tracks/{id}/like`; this plan moves it under `/api/library/**` so one prefix routes to one service.
+Note: the architecture doc's Scenario 2 names `POST /tracks/{id}/like`; this plan moves it under `/api/v1/library/**` so one prefix routes to one service.
 
 ### 3.4 Media & streaming (→ streaming-service)
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/api/media/{trackId}/master` | artist (owner) | Upload master audio, multipart (Scenario 1); replaces today's generic `/api/streaming/upload` |
-| POST | `/api/media/{trackId}/cover` | artist (owner) | Upload cover image |
-| GET | `/api/media/{trackId}/status` | artist (owner) | Transcoding job status |
-| POST | `/api/streaming/{trackId}/token` | user | Issue a short-lived signed token for playback, or `?type=offline` for download |
-| GET | `/api/streaming/{trackId}` | signed token | Stream audio with HTTP `Range` support and a `quality` parameter; replaces today's `/api/streaming/{fileName}` |
+| POST | `/api/v1/media/{trackId}/master` | artist (owner) | Upload master audio, multipart (Scenario 1); replaces today's generic `/api/v1/streaming/upload` |
+| POST | `/api/v1/media/{trackId}/cover` | artist (owner) | Upload cover image |
+| GET | `/api/v1/media/{trackId}/status` | artist (owner) | Transcoding job status |
+| POST | `/api/v1/streaming/{trackId}/token` | user | Issue a short-lived signed token for playback, or `?type=offline` for download |
+| GET | `/api/v1/streaming/{trackId}` | signed token | Stream audio with HTTP `Range` support and a `quality` parameter; replaces today's `/api/v1/streaming/{fileName}` |
 
 ### 3.5 Recommendations & analytics (→ recommendation-service)
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/recommendations/me` | user | Precomputed personal feed; triggers the async refresh and impression tracking (Scenario 3) |
-| POST | `/api/analytics/plays` | user | Report a play (trackId, listened seconds) as a ListeningEvent; userId comes from the JWT, not the body |
-| GET | `/api/charts/top` | public | Popular tracks (`period`, `genre`), from popularity counts |
+| GET | `/api/v1/recommendations/me` | user | Precomputed personal feed; triggers the async refresh and impression tracking (Scenario 3) |
+| POST | `/api/v1/analytics/plays` | user | Report a play (trackId, listened seconds) as a ListeningEvent; userId comes from the JWT, not the body |
+| GET | `/api/v1/charts/top` | public | Popular tracks (`period`, `genre`), from popularity counts |
 
-Not exposed: the existing `GET /api/recommendations/users/{userId}/events` (lets anyone read anyone's history; replace with `/me` or keep admin-only). The existing `POST /api/recommendations/events` becomes `/api/analytics/plays`.
+Not exposed: the existing `GET /api/v1/recommendations/users/{userId}/events` (lets anyone read anyone's history; replace with `/me` or keep admin-only). The existing `POST /api/v1/recommendations/events` becomes `/api/v1/analytics/plays`.
 
 ### 3.6 Notifications (→ notification-service)
 
@@ -99,33 +99,33 @@ Notification is driven by events, so listeners need very little HTTP surface.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| GET | `/api/notifications/preferences` | user | Email preferences (new releases, year summary) |
-| PUT | `/api/notifications/preferences` | user | Opt in / out of mailings |
-| GET | `/api/admin/notifications` | admin | Delivery log (NotificationLogEntry), filter by status |
-| GET/POST/PUT | `/api/admin/notification-templates/**` | admin | Manage email templates |
+| GET | `/api/v1/notifications/preferences` | user | Email preferences (new releases, year summary) |
+| PUT | `/api/v1/notifications/preferences` | user | Opt in / out of mailings |
+| GET | `/api/v1/admin/notifications` | admin | Delivery log (NotificationLogEntry), filter by status |
+| GET/POST/PUT | `/api/v1/admin/notification-templates/**` | admin | Manage email templates |
 
-Not exposed: the existing `POST /api/notifications` (would let any client send email). Sending happens only from consumed events.
+Not exposed: the existing `POST /api/v1/notifications` (would let any client send email). Sending happens only from consumed events.
 
 ## 4. Route table (gateway config)
 
-Order matters: the more specific `/api/admin/...` routes come before the general ones.
+Order matters: the more specific `/api/v1/admin/...` routes come before the general ones.
 
 | Route id | Predicate (Path) | Target |
 |---|---|---|
-| admin-users | `/api/admin/users/**` | `http://auth-service:8081` |
-| admin-notifications | `/api/admin/notifications/**`, `/api/admin/notification-templates/**` | `http://notification-service:8085` |
-| auth | `/api/auth/**`, `/api/users/**` | `http://auth-service:8081` |
-| catalog | `/api/tracks/**`, `/api/artists/**`, `/api/albums/**`, `/api/genres/**` | `http://catalog-service:8082` |
-| library | `/api/library/**` | `http://library-service:8086` |
-| media | `/api/media/**`, `/api/streaming/**` | `http://streaming-service:8083` |
-| recommendations | `/api/recommendations/**`, `/api/analytics/**`, `/api/charts/**` | `http://recommendation-service:8084` |
-| notifications | `/api/notifications/**` | `http://notification-service:8085` |
+| admin-users | `/api/v1/admin/users/**` | `http://auth-service:8081` |
+| admin-notifications | `/api/v1/admin/notifications/**`, `/api/v1/admin/notification-templates/**` | `http://notification-service:8085` |
+| auth | `/api/v1/auth/**`, `/api/v1/users/**` | `http://auth-service:8081` |
+| catalog | `/api/v1/tracks/**`, `/api/v1/artists/**`, `/api/v1/albums/**`, `/api/v1/genres/**` | `http://catalog-service:8082` |
+| library | `/api/v1/library/**` | `http://library-service:8086` |
+| media | `/api/v1/media/**`, `/api/v1/streaming/**` | `http://streaming-service:8083` |
+| recommendations | `/api/v1/recommendations/**`, `/api/v1/analytics/**`, `/api/v1/charts/**` | `http://recommendation-service:8084` |
+| notifications | `/api/v1/notifications/**` | `http://notification-service:8085` |
 
 Cross-cutting gateway behaviour:
 - Validate the JWT once at the gateway, then forward `X-User-Id` and `X-User-Roles` downstream, and strip any such headers sent by the client.
-- Enforce role rules by path (`/api/admin/**` needs admin; artist-only writes listed above).
-- CORS for the web client; rate limit `/api/auth/login` and `/api/auth/register`.
-- Pass `Range` headers through and disable response buffering for `/api/streaming/**`.
+- Enforce role rules by path (`/api/v1/admin/**` needs admin; artist-only writes listed above).
+- CORS for the web client; rate limit `/api/v1/auth/login` and `/api/v1/auth/register`.
+- Pass `Range` headers through and disable response buffering for `/api/v1/streaming/**`.
 - Do not route `/actuator/**` of downstream services.
 
 ## 5. Decisions (2026-10-05)

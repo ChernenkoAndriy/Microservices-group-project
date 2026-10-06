@@ -6,7 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/tracks")
+@RequestMapping("/api/v1/tracks")
 public class TrackController {
 
     private final TrackRepository trackRepository;

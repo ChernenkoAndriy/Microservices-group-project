@@ -19,8 +19,9 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-webflux")
+    implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+   // implementation("org.springframework.boot:spring-boot-starter-web")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -28,4 +29,10 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom("org.springframework.cloud:spring-cloud-dependencies:2025.1.3")
+    }
 }

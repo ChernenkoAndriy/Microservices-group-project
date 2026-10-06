@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.InputStream;
 
 @RestController
-@RequestMapping("/api/streaming")
+@RequestMapping("/api/v1/streaming")
 public class StreamingController {
 
     private final StreamingStorageService storageService;
