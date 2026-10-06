@@ -23,7 +23,6 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         MDC.put("correlationId", correlationId);
 
         try {
-            response.setHeader("X-Correlation-Id", correlationId);
             filterChain.doFilter(new CorrelationIdRequestWrapper(request, correlationId), response);
         }
         finally { MDC.remove("correlationId"); }
