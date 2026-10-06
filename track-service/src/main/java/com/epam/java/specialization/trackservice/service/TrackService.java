@@ -126,7 +126,10 @@ public class TrackService {
 
     private TrackPageDto toPage(Page<Track> tracks) {
         Set<Long> artistIds = tracks.stream().map(Track::getArtistId).collect(Collectors.toSet());
-        return TrackMapper.toPage(tracks, artistDirectory.findProfiles(artistIds));
+        ArtistProfiles artists = artistIds.isEmpty()
+                ? new ArtistProfiles(Map.of(), true)
+                : artistDirectory.findProfiles(artistIds);
+        return TrackMapper.toPage(tracks, artists);
     }
 
     private List<Genre> resolveGenres(Set<String> slugs) {

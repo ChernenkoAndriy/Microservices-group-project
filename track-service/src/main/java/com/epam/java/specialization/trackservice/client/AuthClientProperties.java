@@ -10,26 +10,5 @@ public record AuthClientProperties(
         URI baseUrl,
         String internalToken,
         Duration connectTimeout,
-        Duration readTimeout,
-        CircuitBreakerSettings circuitBreaker,
-        RetrySettings retry,
-        BulkheadSettings bulkhead) {
-
-    public record CircuitBreakerSettings(
-            int slidingWindowSize,
-            int minimumNumberOfCalls,
-            float failureRateThreshold,
-            Duration waitDurationInOpenState,
-            int permittedCallsInHalfOpenState) {
-    }
-
-    public record RetrySettings(
-            int maxAttempts,
-            Duration initialInterval,
-            double multiplier,
-            double randomizationFactor) {
-    }
-
-    public record BulkheadSettings(int maxConcurrentCalls, Duration maxWaitDuration) {
-    }
+        Duration readTimeout) {
 }

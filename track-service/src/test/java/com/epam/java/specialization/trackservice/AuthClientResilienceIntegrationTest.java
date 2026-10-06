@@ -1,6 +1,7 @@
 package com.epam.java.specialization.trackservice;
 
 import com.epam.java.specialization.trackservice.client.ArtistProfiles;
+import com.epam.java.specialization.trackservice.client.AuthClientConfig;
 import com.epam.java.specialization.trackservice.model.Track;
 import com.epam.java.specialization.trackservice.model.TrackStatus;
 import com.epam.java.specialization.trackservice.repository.GenreRepository;
@@ -8,6 +9,7 @@ import com.epam.java.specialization.trackservice.repository.TrackRepository;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -48,8 +50,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.show-sql=false",
         "internal-api.token=test-token",
         "auth-client.internal-token=test-token",
-        "auth-client.retry.initial-interval=10ms",
-        "auth-client.circuit-breaker.wait-duration-in-open-state=60s",
+        "resilience4j.retry.instances.auth-service.wait-duration=10ms",
+        "resilience4j.circuitbreaker.instances.auth-service.wait-duration-in-open-state=60s",
 })
 @AutoConfigureMockMvc
 @AutoConfigureTracing
@@ -81,6 +83,7 @@ class AuthClientResilienceIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
     @Autowired
+    private CircuitBreakerRegistry circuitBreakers;
     private CircuitBreaker authCircuitBreaker;
     @Autowired
     private TrackRepository trackRepository;
@@ -89,6 +92,7 @@ class AuthClientResilienceIntegrationTest {
 
     @BeforeEach
     void reset() {
+        authCircuitBreaker = circuitBreakers.circuitBreaker(AuthClientConfig.AUTH_SERVICE);
         authService.resetAll();
         authCircuitBreaker.reset();
         trackRepository.deleteAll();

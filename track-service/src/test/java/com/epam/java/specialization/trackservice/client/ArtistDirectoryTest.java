@@ -5,11 +5,13 @@ import com.epam.java.specialization.trackservice.client.auth.dto.UserRoleDto;
 import com.epam.java.specialization.trackservice.client.auth.dto.UserStatusDto;
 import com.epam.java.specialization.trackservice.client.auth.dto.UserSummaryDto;
 import io.github.resilience4j.bulkhead.Bulkhead;
+import io.github.resilience4j.bulkhead.BulkheadRegistry;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import java.net.URI;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -18,22 +20,27 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:directory;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
+        "spring.datasource.username=sa",
+        "spring.datasource.password=",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
+        "spring.jpa.show-sql=false",
+        "resilience4j.bulkhead.instances.auth-service.max-concurrent-calls=1",
+        "resilience4j.bulkhead.instances.auth-service.max-wait-duration=0",
+})
 class ArtistDirectoryTest {
 
-    private static final AuthClientProperties PROPERTIES = new AuthClientProperties(
-            URI.create("http://auth-service"), "token", Duration.ofSeconds(1), Duration.ofSeconds(1),
-            new AuthClientProperties.CircuitBreakerSettings(10, 5, 50, Duration.ofSeconds(60), 2),
-            new AuthClientProperties.RetrySettings(3, Duration.ofMillis(10), 2, 0.5),
-            new AuthClientProperties.BulkheadSettings(1, Duration.ZERO));
-
-    private final AuthClientConfig config = new AuthClientConfig();
-    private final InternalUsersApi usersApi = mock(InternalUsersApi.class);
-    private final Bulkhead bulkhead = config.authBulkhead(PROPERTIES);
-    private final ArtistDirectory directory = new ArtistDirectory(
-            usersApi, config.authCircuitBreaker(PROPERTIES), config.authRetry(PROPERTIES), bulkhead);
+    @MockitoBean
+    private InternalUsersApi usersApi;
+    @Autowired
+    private ArtistDirectory directory;
+    @Autowired
+    private BulkheadRegistry bulkheads;
 
     @Test
     void fullBulkheadFallsBackInsteadOfWaiting() throws Exception {
@@ -54,12 +61,14 @@ class ArtistDirectoryTest {
         assertThat(rejected.available()).isFalse();
         assertThat(rejected.nameOf(7L)).isEqualTo(ArtistProfiles.UNKNOWN_ARTIST);
         assertThat(slowCall.get(5, TimeUnit.SECONDS).nameOf(7L)).isEqualTo("Artist 7");
+        Bulkhead bulkhead = bulkheads.bulkhead(AuthClientConfig.AUTH_SERVICE);
         assertThat(bulkhead.getMetrics().getAvailableConcurrentCalls()).isEqualTo(1);
     }
 
     @Test
     void emptyLookupDoesNotCallAuthService() {
         assertThat(directory.findProfiles(List.of()).available()).isTrue();
+        verifyNoInteractions(usersApi);
     }
 
     private static UserSummaryDto artist(Long id) {
