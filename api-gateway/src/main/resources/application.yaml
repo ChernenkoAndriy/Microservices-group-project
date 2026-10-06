@@ -43,6 +43,35 @@ spring:
               uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
               predicates:
                 - Path=/api/v1/notifications/**
+jwt:
+  # Must be the same Base64-encoded HMAC key auth-service signs tokens with (same env var as auth-service).
+  secret: ${AUTH_SERVICE_JWT_SECRET:c3BvdHR5LWF1dGgtc2VydmljZS1kZXYtc2VjcmV0LWtleS1jaGFuZ2UtbWUtcGxlYXNl}
+
+gateway:
+  security:
+    # Deny by default: every request needs a valid JWT except the endpoints listed here
+    # (see API_GATEWAY_ENDPOINTS.md). Omit `method` to allow any method.
+    public-endpoints:
+      - method: POST
+        paths:
+          - /api/v1/auth/register
+          - /api/v1/auth/login
+          - /api/v1/auth/refresh
+      - method: GET
+        paths:
+          - /api/v1/tracks
+          - /api/v1/tracks/{id}
+          - /api/v1/artists/{id}
+          - /api/v1/artists/{id}/tracks
+          - /api/v1/artists/{id}/albums
+          - /api/v1/albums/{id}
+          - /api/v1/genres
+          - /api/v1/charts/top
+          # Protected by a signed stream token that streaming-service checks, not by the JWT.
+          - /api/v1/streaming/{trackId}
+          - /actuator/health/**
+          - /actuator/info
+
 management:
   endpoints:
     web:
