@@ -9,57 +9,26 @@ import com.epam.java.specialization.authservice.api.dto.UserStatusDto;
 import com.epam.java.specialization.authservice.model.Role;
 import com.epam.java.specialization.authservice.model.User;
 import com.epam.java.specialization.authservice.model.UserStatus;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.springframework.data.domain.Page;
 
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+@Mapper(uses = DateTimeMapping.class)
+public interface UserMapper {
 
-public final class UserMapper {
+    @Mapping(target = "displayName", source = "username")
+    @Mapping(target = "status", source = "status", defaultValue = "ACTIVE")
+    UserProfileDto toProfile(User user);
 
-    private UserMapper() {
+    default UserPageDto toPage(Page<User> page) {
+        return new UserPageDto(page.map(this::toProfile).getContent(), toPageMetadata(page));
     }
 
-    public static UserProfileDto toProfile(User user) {
-        UserProfileDto profile = new UserProfileDto(
-                user.getId(),
-                user.getEmail(),
-                user.getUsername(),
-                toDto(user.getRole()),
-                toDto(user.getStatus() != null ? user.getStatus() : UserStatus.ACTIVE),
-                toOffsetDateTime(user.getCreatedAt()),
-                toOffsetDateTime(user.getUpdatedAt()));
-        profile.setAvatarUrl(user.getAvatarUrl());
-        return profile;
-    }
+    PageMetadataDto toPageMetadata(Page<?> page);
 
-    public static UserPageDto toPage(Page<User> page) {
-        return new UserPageDto(
-                page.map(UserMapper::toProfile).getContent(),
-                new PageMetadataDto(page.getNumber(), page.getSize(), page.getTotalElements(), page.getTotalPages()));
-    }
+    Role toModel(UserRoleDto role);
 
-    public static Role toModel(UserRoleDto role) {
-        return role == null ? null : Role.valueOf(role.name());
-    }
+    Role toModel(RegistrationRoleDto role);
 
-    public static Role toModel(RegistrationRoleDto role) {
-        return role == null ? null : Role.valueOf(role.name());
-    }
-
-    public static UserStatus toModel(UserStatusDto status) {
-        return status == null ? null : UserStatus.valueOf(status.name());
-    }
-
-    private static UserRoleDto toDto(Role role) {
-        return role == null ? null : UserRoleDto.valueOf(role.name());
-    }
-
-    private static UserStatusDto toDto(UserStatus status) {
-        return UserStatusDto.valueOf(status.name());
-    }
-
-    private static OffsetDateTime toOffsetDateTime(Instant instant) {
-        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
-    }
+    UserStatus toModel(UserStatusDto status);
 }

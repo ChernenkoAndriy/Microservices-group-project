@@ -1,0 +1,163 @@
+asyncapi: 3.0.0
+info:
+  title: Spotty Catalog Service Events
+  version: 1.0.0
+  description: |
+    Kafka events published and consumed by catalog-service (`track-service/`, Catalog & Content Management).
+    Shared conventions (headers, keys, delivery guarantees) are in `api-contracts/README.md`.
+
+defaultContentType: application/json
+
+servers:
+  kafka:
+    host: kafka:9092
+    protocol: kafka
+    description: Kafka inside the compose network or the cluster
+
+channels:
+  trackPublished:
+    address: catalog.track.published
+    description: |
+      A track became publicly available for the first time (Scenario 1). Keyed by track id.
+      Consumers: notification-service.
+    messages:
+      TrackPublishedEvent:
+        $ref: '#/components/messages/TrackPublishedEvent'
+
+  trackSnapshots:
+    address: catalog.track.snapshot
+    description: |
+      Latest state of every track. Compacted, keyed by track id, so a new consumer can rebuild its copy
+      by reading the topic from the start. Consumers: recommendation-service.
+    messages:
+      TrackSnapshot:
+        $ref: '#/components/messages/TrackSnapshot'
+    bindings:
+      kafka:
+        topicConfiguration:
+          cleanup.policy: [compact]
+        bindingVersion: 0.5.0
+
+  assetReady:
+    $ref: '../streaming-service/asyncapi.yaml#/channels/assetReady'
+
+operations:
+  publishTrackPublished:
+    action: send
+    channel:
+      $ref: '#/channels/trackPublished'
+    summary: Sent once, when a track first moves to `PUBLISHED`.
+    messages:
+      - $ref: '#/channels/trackPublished/messages/TrackPublishedEvent'
+
+  publishTrackSnapshot:
+    action: send
+    channel:
+      $ref: '#/channels/trackSnapshots'
+    summary: Sent whenever a track's metadata or status changes.
+    messages:
+      - $ref: '#/channels/trackSnapshots/messages/TrackSnapshot'
+
+  receiveAssetReady:
+    action: receive
+    channel:
+      $ref: '#/channels/assetReady'
+    summary: Publishes the track whose audio is transcoded (replaces `POST /internal/tracks/{trackId}/publish`).
+    messages:
+      - $ref: '#/channels/assetReady/messages/AssetReadySnapshot'
+    bindings:
+      kafka:
+        groupId:
+          type: string
+          enum: [catalog-service]
+        bindingVersion: 0.5.0
+
+components:
+  messages:
+    TrackPublishedEvent:
+      name: TrackPublishedEvent
+      title: Track published
+      summary: A track is now public. Key is `trackId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/TrackPublishedEvent'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
+    TrackSnapshot:
+      name: TrackSnapshot
+      title: Track snapshot
+      summary: The full current state of one track. Key is `trackId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/TrackSnapshot'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
+  schemas:
+    TrackPublishedEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - occurredAt
+        - trackId
+        - artistId
+        - title
+        - genres
+      properties:
+        eventId:
+          $ref: '../common/events.yaml#/EventId'
+        occurredAt:
+          $ref: '../common/events.yaml#/OccurredAt'
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        artistId:
+          $ref: '../common/schemas.yaml#/Id'
+        title:
+          $ref: './openapi.yaml#/components/schemas/Title'
+        genres:
+          $ref: './openapi.yaml#/components/schemas/GenreSlugList'
+        releaseDate:
+          type: string
+          format: date
+
+    TrackSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - occurredAt
+        - trackId
+        - title
+        - artistId
+        - genres
+        - status
+      properties:
+        eventId:
+          $ref: '../common/events.yaml#/EventId'
+        occurredAt:
+          $ref: '../common/events.yaml#/OccurredAt'
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        title:
+          $ref: './openapi.yaml#/components/schemas/Title'
+        artistId:
+          $ref: '../common/schemas.yaml#/Id'
+        releaseDate:
+          type: string
+          format: date
+        genres:
+          $ref: './openapi.yaml#/components/schemas/GenreSlugList'
+        status:
+          description: Lets consumers drop tracks that are no longer `PUBLISHED`.
+          allOf:
+            - $ref: './openapi.yaml#/components/schemas/TrackStatus'

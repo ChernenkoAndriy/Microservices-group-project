@@ -1,0 +1,105 @@
+asyncapi: 3.0.0
+info:
+  title: Spotty Streaming Service Events
+  version: 1.0.0
+  description: |
+    Kafka events published by streaming-service (Media Streaming & Delivery).
+    Shared conventions (headers, keys, delivery guarantees) are in `api-contracts/README.md`.
+
+defaultContentType: application/json
+
+servers:
+  kafka:
+    host: kafka:9092
+    protocol: kafka
+    description: Kafka inside the compose network or the cluster
+
+channels:
+  assetReady:
+    address: streaming.asset.ready
+    description: |
+      Transcoding of a track's master file finished and every quality can be streamed (Scenario 1).
+      Keyed by track id. Consumers: catalog-service.
+    messages:
+      AssetReadySnapshot:
+        $ref: '#/components/messages/AssetReadySnapshot'
+
+operations:
+  publishAssetReady:
+    action: send
+    channel:
+      $ref: '#/channels/assetReady'
+    summary: Sent when a transcoding job reaches `READY`, again after a new master is transcoded.
+    messages:
+      - $ref: '#/channels/assetReady/messages/AssetReadySnapshot'
+
+components:
+  messages:
+    AssetReadySnapshot:
+      name: AssetReadySnapshot
+      title: Asset ready
+      summary: The streamable audio of one track. Key is `trackId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/AssetReadySnapshot'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
+  schemas:
+    AssetReadySnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - occurredAt
+        - assetId
+        - trackId
+        - durationSeconds
+        - qualities
+        - storageUrls
+      properties:
+        eventId:
+          $ref: '../common/events.yaml#/EventId'
+        occurredAt:
+          $ref: '../common/events.yaml#/OccurredAt'
+        assetId:
+          $ref: '../common/schemas.yaml#/Id'
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        durationSeconds:
+          description: Length of the transcoded audio.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 21600
+        qualities:
+          description: Qualities that can be streamed.
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: './openapi.yaml#/components/schemas/AudioQuality'
+        storageUrls:
+          description: Storage location of each quality, for streaming-service's own use.
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/StorageUrl'
+
+    StorageUrl:
+      type: object
+      additionalProperties: false
+      required:
+        - quality
+        - url
+      properties:
+        quality:
+          $ref: './openapi.yaml#/components/schemas/AudioQuality'
+        url:
+          type: string
+          maxLength: 2048
+          example: s3://media/tracks/42/high.mp3

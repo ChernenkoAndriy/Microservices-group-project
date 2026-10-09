@@ -19,12 +19,13 @@ public class AdminUserController implements UserAdministrationApi {
 
     private final UserService userService;
     private final CurrentUser currentUser;
+    private final UserMapper userMapper;
 
     @Override
     public ResponseEntity<UserPageDto> listUsers(String q, UserRoleDto role, UserStatusDto status,
                                                  Integer page, Integer size) {
         return ResponseEntity.ok(userService.listUsers(
-                q, UserMapper.toModel(role), UserMapper.toModel(status), page, size));
+                q, userMapper.toModel(role), userMapper.toModel(status), page, size));
     }
 
     @Override

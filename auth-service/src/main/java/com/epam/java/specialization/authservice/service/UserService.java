@@ -36,10 +36,12 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RefreshTokenService refreshTokenService;
+    private final UserMapper userMapper;
+    private final InternalUserMapper internalUserMapper;
 
     @Transactional(readOnly = true)
     public UserProfileDto getProfile(Long userId) {
-        return UserMapper.toProfile(findUser(userId));
+        return userMapper.toProfile(findUser(userId));
     }
 
     @Transactional
@@ -65,19 +67,19 @@ public class UserService {
 
         User saved = userRepository.saveAndFlush(user);
         log.debug("Updated profile of user id={}", userId);
-        return UserMapper.toProfile(saved);
+        return userMapper.toProfile(saved);
     }
 
     @Transactional(readOnly = true)
     public UserPageDto listUsers(String q, Role role, UserStatus status, int page, int size) {
         PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
-        return UserMapper.toPage(userRepository.findAll(UserSpecifications.search(q, role, status), pageRequest));
+        return userMapper.toPage(userRepository.findAll(UserSpecifications.search(q, role, status), pageRequest));
     }
 
     @Transactional
     public UserProfileDto updateUser(Long callerId, Long userId, AdminUpdateUserRequestDto request) {
-        Role role = UserMapper.toModel(request.getRole());
-        UserStatus status = UserMapper.toModel(request.getStatus());
+        Role role = userMapper.toModel(request.getRole());
+        UserStatus status = userMapper.toModel(request.getStatus());
         if (role == null && status == null) {
             throw new BadRequestException("EMPTY_UPDATE", "At least one field must be present");
         }
@@ -101,20 +103,13 @@ public class UserService {
 
         User saved = userRepository.saveAndFlush(user);
         log.debug("User id={} updated user id={}: role={} status={}", callerId, userId, saved.getRole(), saved.getStatus());
-        return UserMapper.toProfile(saved);
-    }
-
-    @Transactional(readOnly = true)
-    public UserSummaryDto getUserByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .map(InternalUserMapper::toSummary)
-                .orElseThrow(() -> new EntityDoesNotExistException("User with email " + email + " does not exist"));
+        return userMapper.toProfile(saved);
     }
 
     @Transactional(readOnly = true)
     public List<UserSummaryDto> getUsersByIds(Collection<Long> ids) {
         return userRepository.findAllById(ids).stream()
-                .map(InternalUserMapper::toSummary)
+                .map(internalUserMapper::toSummary)
                 .toList();
     }
 

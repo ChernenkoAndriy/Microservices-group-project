@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: Recommendation Service event models
+  version: 1.0.0
+  description: |
+    Code generation only: openapi-generator cannot read AsyncAPI, so this file lists the event payload
+    schemas this service sends or receives and points at their asyncapi.yaml. Models only, no paths.
+paths: {}
+components:
+  schemas:
+    RecommendationsServedEvent:
+      $ref: './asyncapi.yaml#/components/schemas/RecommendationsServedEvent'
+    TrackLikeChange:
+      $ref: '../library-service/asyncapi.yaml#/components/schemas/TrackLikeChange'
+    TrackSnapshot:
+      $ref: '../catalog-service/asyncapi.yaml#/components/schemas/TrackSnapshot'

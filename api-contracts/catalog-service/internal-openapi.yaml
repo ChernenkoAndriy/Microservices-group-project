@@ -6,8 +6,13 @@ info:
     Service-to-service endpoints of catalog-service (`track-service/`). They live under `/internal/**`,
     which the gateway never routes, and every call must carry the shared service token in `X-Internal-Token`.
 
-    `publishTrack` is the hook streaming-service calls when transcoding finishes. It is synchronous until
-    the message broker is in place, after which it becomes the `AssetReadySnapshot` consumer.
+    Consumers generate a client from this file (see `api-contracts/README.md`):
+    - streaming-service: `GET /internal/tracks/{trackId}` checks that the caller owns the track before an
+      upload, and that a track is published before a stream token is issued.
+    - library-service: the same call checks that a track exists before a like.
+
+    `publishTrack` is the synchronous stand-in for the `AssetReadySnapshot` consumer (`asyncapi.yaml`) and
+    is removed once that consumer is in place.
 
 servers:
   - url: http://catalog-service:8082
@@ -15,26 +20,46 @@ servers:
 
 tags:
   - name: InternalTracks
-    description: Track lifecycle changes made by other services.
+    description: Track lookups and lifecycle changes for other services.
 
 security:
   - internalToken: []
 
 paths:
+  /internal/tracks/{trackId}:
+    get:
+      tags: [InternalTracks]
+      operationId: getTrackInfo
+      summary: Owner and status of a track
+      description: |
+        Returns the track in any status, including drafts that `GET /api/v1/tracks/{trackId}` hides from
+        other users, so the caller can apply its own rules.
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      responses:
+        '200':
+          description: The track.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalTrackInfo'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+
   /internal/tracks/{trackId}/publish:
     post:
       tags: [InternalTracks]
       operationId: publishTrack
       summary: Publish a track whose audio is ready
+      deprecated: true
       description: |
         Moves the track to `PUBLISHED`, sets `publishedAt` on the first publication and `releaseDate`
         if the artist did not set one. Publishing a published track only updates `durationSeconds`.
+        Replaced by consuming `AssetReadySnapshot` from `streaming.asset.ready`.
       parameters:
-        - name: trackId
-          in: path
-          required: true
-          schema:
-            $ref: '../common/schemas.yaml#/Id'
+        - $ref: '#/components/parameters/TrackId'
       requestBody:
         required: true
         content:
@@ -59,7 +84,30 @@ components:
       in: header
       name: X-Internal-Token
 
+  parameters:
+    TrackId:
+      name: trackId
+      in: path
+      required: true
+      schema:
+        $ref: '../common/schemas.yaml#/Id'
+
   schemas:
+    InternalTrackInfo:
+      description: What other services need to authorize actions on a track.
+      type: object
+      required:
+        - id
+        - artistId
+        - status
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        artistId:
+          $ref: '../common/schemas.yaml#/Id'
+        status:
+          $ref: './openapi.yaml#/components/schemas/TrackStatus'
+
     PublishTrackRequest:
       type: object
       additionalProperties: false

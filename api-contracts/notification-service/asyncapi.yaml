@@ -1,0 +1,70 @@
+asyncapi: 3.0.0
+info:
+  title: Spotty Notification Service Events
+  version: 1.0.0
+  description: |
+    Kafka events consumed by notification-service (Notification). It publishes none: every email is a
+    reaction to one of these events.
+    Shared conventions (headers, keys, delivery guarantees) are in `api-contracts/README.md`.
+
+defaultContentType: application/json
+
+servers:
+  kafka:
+    host: kafka:9092
+    protocol: kafka
+    description: Kafka inside the compose network or the cluster
+
+channels:
+  trackPublished:
+    $ref: '../catalog-service/asyncapi.yaml#/channels/trackPublished'
+
+  artistFollows:
+    $ref: '../library-service/asyncapi.yaml#/channels/artistFollows'
+
+  userSnapshots:
+    $ref: '../auth-service/asyncapi.yaml#/channels/userSnapshots'
+
+operations:
+  receiveTrackPublished:
+    action: receive
+    channel:
+      $ref: '#/channels/trackPublished'
+    summary: Emails the artist's followers about the new release (Scenario 1).
+    messages:
+      - $ref: '#/channels/trackPublished/messages/TrackPublishedEvent'
+    bindings:
+      kafka:
+        groupId:
+          type: string
+          enum: [notification-service]
+        bindingVersion: 0.5.0
+
+  receiveArtistFollows:
+    action: receive
+    channel:
+      $ref: '#/channels/artistFollows'
+    summary: Keeps the local list of each artist's followers, so a release needs no call to library-service.
+    messages:
+      - $ref: '#/channels/artistFollows/messages/ArtistFollowedEvent'
+      - $ref: '#/channels/artistFollows/messages/ArtistUnfollowedEvent'
+    bindings:
+      kafka:
+        groupId:
+          type: string
+          enum: [notification-service]
+        bindingVersion: 0.5.0
+
+  receiveUserSnapshots:
+    action: receive
+    channel:
+      $ref: '#/channels/userSnapshots'
+    summary: Keeps the local copy of each user's email and status; blocked users get no emails.
+    messages:
+      - $ref: '#/channels/userSnapshots/messages/UserSnapshot'
+    bindings:
+      kafka:
+        groupId:
+          type: string
+          enum: [notification-service]
+        bindingVersion: 0.5.0

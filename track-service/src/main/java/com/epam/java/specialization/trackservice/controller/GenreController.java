@@ -16,10 +16,11 @@ import java.util.List;
 public class GenreController implements GenresApi {
 
     private final GenreRepository genreRepository;
+    private final TrackMapper trackMapper;
 
     @Override
     @Transactional(readOnly = true)
     public ResponseEntity<List<GenreDto>> listGenres() {
-        return ResponseEntity.ok(genreRepository.findAllByOrderByNameAsc().stream().map(TrackMapper::toDto).toList());
+        return ResponseEntity.ok(genreRepository.findAllByOrderByNameAsc().stream().map(trackMapper::toDto).toList());
     }
 }

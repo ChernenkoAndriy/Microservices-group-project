@@ -5,10 +5,8 @@ import com.epam.java.specialization.authservice.api.dto.RegisterRequestDto;
 import com.epam.java.specialization.authservice.api.dto.TokenResponseDto;
 import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
 import com.epam.java.specialization.authservice.exception.AccountBlockedException;
-import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
 import com.epam.java.specialization.authservice.exception.InvalidCredentialsException;
 import com.epam.java.specialization.authservice.exception.InvalidRefreshTokenException;
-import com.epam.java.specialization.authservice.exception.TokenIsNotValidException;
 import com.epam.java.specialization.authservice.exception.UserAlreadyExistsException;
 import com.epam.java.specialization.authservice.jwt.JwtService;
 import com.epam.java.specialization.authservice.jwt.RefreshTokenService;
@@ -31,6 +29,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final UserMapper userMapper;
 
     @Transactional
     public UserProfileDto register(RegisterRequestDto request) {
@@ -46,13 +45,13 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.getDisplayName());
         user.setEmail(request.getEmail());
-        user.setRole(UserMapper.toModel(request.getRole()));
+        user.setRole(userMapper.toModel(request.getRole()));
         user.setStatus(UserStatus.ACTIVE);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
 
         User saved = userRepository.save(user);
         log.debug("Registered user id={}", saved.getId());
-        return UserMapper.toProfile(saved);
+        return userMapper.toProfile(saved);
     }
 
     @Transactional
@@ -81,22 +80,6 @@ public class AuthService {
 
     public void logout(String refreshToken) {
         refreshTokenService.revoke(refreshToken);
-    }
-
-    public boolean isTokenValid(String token) {
-        boolean valid = jwtService.isTokenValid(token);
-        log.debug("Token validation result: {}", valid);
-        return valid;
-    }
-
-    @Transactional(readOnly = true)
-    public Long getUserIdFromToken(String token) {
-        Long userId = jwtService.extractUserId(token);
-        if (!userRepository.existsById(userId)) {
-            throw new EntityDoesNotExistException("User with id " + userId + " does not exist");
-        }
-        log.debug("Resolved user id={} from token", userId);
-        return userId;
     }
 
     private TokenResponseDto issueTokens(User user) {

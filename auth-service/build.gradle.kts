@@ -20,6 +20,9 @@ repositories {
 }
 
 dependencies {
+    implementation("org.mapstruct:mapstruct:1.6.3")
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
@@ -42,6 +45,14 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// MapStruct mappers are Spring beans, and a target property left unmapped is a compile error.
+tasks.withType<JavaCompile> {
+    options.compilerArgs.addAll(listOf(
+        "-Amapstruct.defaultComponentModel=spring",
+        "-Amapstruct.unmappedTargetPolicy=ERROR",
+    ))
 }
 
 val springServerOptions = mapOf(
@@ -82,8 +93,28 @@ val openApiGenerateInternal by tasks.registering(org.openapitools.generator.grad
     configOptions.set(springServerOptions + ("configPackage" to "org.openapitools.configuration.internal"))
 }
 
+// Kafka event payloads (api-contracts/auth-service/asyncapi.yaml), generated as plain models.
+val openApiGenerateEvents by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
+    generatorName.set("spring")
+    inputSpec.set("$rootDir/../api-contracts/auth-service/event-models.yaml")
+    outputDir.set(layout.buildDirectory.dir("generated/events").get().asFile.path)
+    modelPackage.set("com.epam.java.specialization.authservice.event")
+    globalProperties.set(mapOf("models" to "", "modelDocs" to "false", "modelTests" to "false"))
+    configOptions.set(mapOf(
+        "useSpringBoot4" to "true",
+        "useJackson3" to "true",
+        "useBeanValidation" to "true",
+        "openApiNullable" to "false",
+        "documentationProvider" to "none",
+        "annotationLibrary" to "none",
+        "generateJsonIncludeAnnotations" to "false",
+        "generateJsonSetterNullsAnnotations" to "false",
+    ))
+}
+
 sourceSets.main {
     java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
     java.srcDir(layout.buildDirectory.dir("generated/openapi-internal/src/main/java"))
+    java.srcDir(layout.buildDirectory.dir("generated/events/src/main/java"))
 }
-tasks.compileJava { dependsOn(tasks.openApiGenerate, openApiGenerateInternal) }
+tasks.compileJava { dependsOn(tasks.openApiGenerate, openApiGenerateInternal, openApiGenerateEvents) }

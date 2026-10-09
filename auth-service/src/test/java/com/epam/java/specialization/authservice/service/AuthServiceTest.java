@@ -1,5 +1,8 @@
 package com.epam.java.specialization.authservice.service;
 
+import org.mockito.Spy;
+import org.mapstruct.factory.Mappers;
+import com.epam.java.specialization.authservice.mapper.UserMapper;
 import com.epam.java.specialization.authservice.api.dto.LoginRequestDto;
 import com.epam.java.specialization.authservice.api.dto.RegisterRequestDto;
 import com.epam.java.specialization.authservice.api.dto.RegistrationRoleDto;
@@ -8,10 +11,8 @@ import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
 import com.epam.java.specialization.authservice.api.dto.UserRoleDto;
 import com.epam.java.specialization.authservice.api.dto.UserStatusDto;
 import com.epam.java.specialization.authservice.exception.AccountBlockedException;
-import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
 import com.epam.java.specialization.authservice.exception.InvalidCredentialsException;
 import com.epam.java.specialization.authservice.exception.InvalidRefreshTokenException;
-import com.epam.java.specialization.authservice.exception.TokenIsNotValidException;
 import com.epam.java.specialization.authservice.exception.UserAlreadyExistsException;
 import com.epam.java.specialization.authservice.jwt.JwtService;
 import com.epam.java.specialization.authservice.jwt.RefreshTokenService;
@@ -51,6 +52,9 @@ class AuthServiceTest {
     private JwtService jwtService;
     @Mock
     private RefreshTokenService refreshTokenService;
+
+    @Spy
+    private UserMapper userMapper = Mappers.getMapper(UserMapper.class);
 
     @InjectMocks
     private AuthService authService;
@@ -185,43 +189,6 @@ class AuthServiceTest {
         authService.logout("refresh");
 
         verify(refreshTokenService).revoke("refresh");
-    }
-
-    @Test
-    void isTokenValidDelegatesToJwtService() {
-        when(jwtService.isTokenValid("token")).thenReturn(true);
-
-        assertThat(authService.isTokenValid("token")).isTrue();
-    }
-
-    @Nested
-    class GetUserIdFromToken {
-
-        @Test
-        void returnsIdOfExistingUser() {
-            when(jwtService.extractUserId("token")).thenReturn(7L);
-            when(userRepository.existsById(7L)).thenReturn(true);
-
-            assertThat(authService.getUserIdFromToken("token")).isEqualTo(7L);
-        }
-
-        @Test
-        void throwsWhenUserNoLongerExists() {
-            when(jwtService.extractUserId("token")).thenReturn(7L);
-            when(userRepository.existsById(7L)).thenReturn(false);
-
-            assertThatThrownBy(() -> authService.getUserIdFromToken("token"))
-                    .isInstanceOf(EntityDoesNotExistException.class);
-        }
-
-        @Test
-        void propagatesInvalidToken() {
-            when(jwtService.extractUserId("junk")).thenThrow(new TokenIsNotValidException("bad"));
-
-            assertThatThrownBy(() -> authService.getUserIdFromToken("junk"))
-                    .isInstanceOf(TokenIsNotValidException.class);
-            verifyNoInteractions(userRepository);
-        }
     }
 
     private void stubTokenIssuing(User user) {

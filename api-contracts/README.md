@@ -1,7 +1,8 @@
 # Spotty API contracts
 
 OpenAPI 3.0.3 contracts for every service behind the API gateway, written from
-[`API_GATEWAY_ENDPOINTS.md`](../API_GATEWAY_ENDPOINTS.md). They are the source of truth for code generation:
+[`API_GATEWAY_ENDPOINTS.md`](../API_GATEWAY_ENDPOINTS.md), plus AsyncAPI 3.0 contracts for the Kafka events
+from [`ARCHITECTURE_PROPOSAL.md`](../ARCHITECTURE_PROPOSAL.md). They are the source of truth for code generation:
 services implement the generated interfaces and DTOs, and clients use generated clients.
 
 ## Layout
@@ -13,15 +14,28 @@ api-contracts/
 ├── common/                   shared building blocks, referenced by every contract
 │   ├── schemas.yaml          Id, Email, GenreSlug, PageMetadata, ProblemDetail, FieldError
 │   ├── parameters.yaml       page, size
-│   └── responses.yaml        400 / 401 / 403 / 404 / 409 / 422 / 429 error responses
-├── auth-service/openapi.yaml            /api/v1/auth/**, /api/v1/users/**, /api/v1/admin/users/**
-├── auth-service/internal-openapi.yaml   /internal/** (service-to-service, not routed)
-├── catalog-service/openapi.yaml         /api/v1/tracks/**, /api/v1/artists/**, /api/v1/albums/**, /api/v1/genres
-├── catalog-service/internal-openapi.yaml /internal/** (service-to-service, not routed)
-├── library-service/openapi.yaml         /api/v1/library/**
-├── streaming-service/openapi.yaml       /api/v1/media/**, /api/v1/streaming/**
-├── recommendation-service/openapi.yaml  /api/v1/recommendations/**, /api/v1/analytics/**, /api/v1/charts/**
-└── notification-service/openapi.yaml    /api/v1/notifications/**, /api/v1/admin/notifications/**, /api/v1/admin/notification-templates/**
+│   ├── responses.yaml        400 / 401 / 403 / 404 / 409 / 422 / 429 error responses
+│   └── events.yaml           Kafka headers, eventId, occurredAt, record key
+├── auth-service/
+│   ├── openapi.yaml          /api/v1/auth/**, /api/v1/users/**, /api/v1/admin/users/**
+│   ├── internal-openapi.yaml /internal/users (service-to-service, not routed)
+│   └── asyncapi.yaml         sends UserSnapshot
+├── catalog-service/
+│   ├── openapi.yaml          /api/v1/tracks/**, /api/v1/artists/**, /api/v1/albums/**, /api/v1/genres
+│   ├── internal-openapi.yaml /internal/tracks/** (service-to-service, not routed)
+│   └── asyncapi.yaml         sends TrackPublishedEvent, TrackSnapshot; receives AssetReadySnapshot
+├── library-service/
+│   ├── openapi.yaml          /api/v1/library/**
+│   └── asyncapi.yaml         sends TrackLiked/UnlikedEvent, ArtistFollowed/UnfollowedEvent
+├── streaming-service/
+│   ├── openapi.yaml          /api/v1/media/**, /api/v1/streaming/**
+│   └── asyncapi.yaml         sends AssetReadySnapshot
+├── recommendation-service/
+│   ├── openapi.yaml          /api/v1/recommendations/**, /api/v1/analytics/**, /api/v1/charts/**
+│   └── asyncapi.yaml         sends and receives RecommendationsServedEvent; receives likes, TrackSnapshot
+└── notification-service/
+    ├── openapi.yaml          /api/v1/notifications/**, /api/v1/admin/notifications/**, /api/v1/admin/notification-templates/**
+    └── asyncapi.yaml         receives TrackPublishedEvent, artist follows, UserSnapshot
 ```
 
 `catalog-service` is implemented in the `track-service/` directory (its compose and k8s name is `catalog-service`).
@@ -136,8 +150,8 @@ parameters in the contracts: read them in the service with a filter or argument 
 The stream token is likewise not a generated method parameter; check it in a filter.
 
 **Async side effects.** Operation descriptions name the events they emit (`TrackLikedEvent`,
-`UserSnapshot`, ...). Event payloads are not part of these HTTP contracts; they belong in an AsyncAPI
-document once the broker is chosen.
+`UserSnapshot`, ...). The events themselves are described in each service's `asyncapi.yaml`
+(see [Events (Kafka)](#events-kafka)).
 
 ## Internal APIs and service-to-service calls
 
@@ -148,6 +162,17 @@ document once the broker is chosen.
 - **Generated code.** The owning service generates controller interfaces from the internal contract. Each
   caller generates a client (`library = "spring-http-interface"`) from the same file, so both sides have their
   own DTO classes and share only the YAML.
+- **Calls between services:**
+
+  | Caller → owner | Endpoint | Purpose |
+  |---|---|---|
+  | catalog → auth | `GET /internal/users?ids=` | artist names and avatars for a page of tracks |
+  | library → auth | `GET /internal/users?ids=` | check that an artist exists before a follow |
+  | streaming → catalog | `GET /internal/tracks/{trackId}` | check the uploader owns the track; stream only published tracks |
+  | library → catalog | `GET /internal/tracks/{trackId}` | check that a track exists before a like |
+  | streaming → catalog | `POST /internal/tracks/{trackId}/publish` | **deprecated**: stand-in until catalog consumes `AssetReadySnapshot` |
+
+  Access tokens are never checked through an internal call: the gateway verifies the JWT itself.
 - **First pair: catalog-service → auth-service.**
   - `GET /internal/users?ids=` loads artist names and avatars for a whole page of tracks in one call (no N+1).
   - The client (`track-service/.../client/ArtistDirectory`) is guarded by a semaphore bulkhead, a circuit
@@ -156,6 +181,36 @@ document once the broker is chosen.
     failing.
   - Trace context (`traceparent`) and `X-Correlation-Id` are passed on.
 - **Idempotency.** `POST /api/v1/auth/register` and `POST /api/v1/tracks` accept `Idempotency-Key`.
+
+## Events (Kafka)
+
+Each service's `asyncapi.yaml` lists the topics it **sends** to (defined there) and **receives** from
+(referenced from the producer's file). The producer owns a topic and its message schemas; consumers never
+redefine them.
+
+| Topic | Message(s) | Producer | Consumers | Key |
+|---|---|---|---|---|
+| `auth.user.snapshot` (compacted) | `UserSnapshot` | auth | notification | `userId` |
+| `catalog.track.published` | `TrackPublishedEvent` | catalog | notification | `trackId` |
+| `catalog.track.snapshot` (compacted) | `TrackSnapshot` | catalog | recommendation | `trackId` |
+| `streaming.asset.ready` | `AssetReadySnapshot` | streaming | catalog | `trackId` |
+| `library.track-likes` | `TrackLikedEvent`, `TrackUnlikedEvent` | library | recommendation | `userId` |
+| `library.artist-follows` | `ArtistFollowedEvent`, `ArtistUnfollowedEvent` | library | notification | `artistId` |
+| `recommendation.feed.served` | `RecommendationsServedEvent` | recommendation | recommendation | `userId` |
+
+Conventions:
+- **Names.** Topics are `<producer>.<entity>.<event>`. Messages that must stay in order (like and unlike)
+  share one topic; the `eventType` header tells them apart.
+- **Keys.** The record key is the id named in the table, as a decimal string. Kafka keeps order only per
+  key, so changes that must be applied in order share a key.
+- **Snapshots** carry the full current state, not a change, on a compacted topic. A new consumer rebuilds its
+  local copy by reading the topic from the start.
+- **Payload.** JSON. Every message has `eventId` (UUID) and `occurredAt` (UTC), plus the headers
+  `eventType`, `X-Correlation-Id` and `traceparent` (`common/events.yaml`).
+- **Delivery** is at least once. Consumers are idempotent: they remember processed `eventId`s and skip
+  repeats. Each service consumes with its own consumer group, named after the service.
+- **Evolution.** Fields are only added, never renamed or removed, and consumers ignore unknown fields.
+  A breaking change goes to a new topic (`...v2`).
 
 ## Differences from `API_GATEWAY_ENDPOINTS.md`
 
@@ -238,6 +293,19 @@ Every service except `api-gateway` is already set up this way. Controllers imple
 `auth-service` implements every operation and keeps `skipDefaultInterface` at `true`. The other services set it
 to `false`, so an operation they don't implement yet answers 501 Not Implemented through the generated default
 method. Switch it to `true` once a service implements everything.
+
+**Other generated code** (every service registers these Gradle tasks next to `openApiGenerate`):
+- `openApiGenerateInternal`: controller interfaces for the service's own `internal-openapi.yaml` (auth, catalog).
+- `openApi...Client`: an HTTP interface client (`library = "spring-http-interface"`) for another service's
+  internal API: catalog → auth, library → auth and catalog, streaming → catalog. Package `<service>.client.<target>`.
+- `openApiGenerateEvents`: Kafka payload classes. openapi-generator cannot read AsyncAPI, so each service has an
+  `event-models.yaml` that only `$ref`s the payload schemas it sends or receives from the `asyncapi.yaml` files,
+  and the task generates models only (package `<service>.event`). Producers and listeners are written by hand
+  (`KafkaTemplate`, `@KafkaListener`).
+
+Mapping between entities and generated DTOs uses **MapStruct** in every service: mappers are Spring beans
+(`-Amapstruct.defaultComponentModel=spring`) and an unmapped target property fails the build
+(`-Amapstruct.unmappedTargetPolicy=ERROR`).
 
 **Docker builds:** each service's build context is its own directory, so the Dockerfiles take
 `api-contracts` from a second, named build context, `contracts` (`COPY --from=contracts . /api-contracts`).

@@ -20,6 +20,8 @@ repositories {
 }
 
 dependencies {
+    implementation("org.mapstruct:mapstruct:1.6.3")
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
@@ -30,6 +32,14 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// MapStruct mappers are Spring beans, and a target property left unmapped is a compile error.
+tasks.withType<JavaCompile> {
+    options.compilerArgs.addAll(listOf(
+        "-Amapstruct.defaultComponentModel=spring",
+        "-Amapstruct.unmappedTargetPolicy=ERROR",
+    ))
 }
 
 openApiGenerate {
@@ -58,5 +68,27 @@ openApiGenerate {
     )
 }
 
-sourceSets.main { java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java")) }
-tasks.compileJava { dependsOn(tasks.openApiGenerate) }
+// Kafka event payloads (api-contracts/recommendation-service/asyncapi.yaml), generated as plain models.
+val openApiGenerateEvents by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
+    generatorName.set("spring")
+    inputSpec.set("$rootDir/../api-contracts/recommendation-service/event-models.yaml")
+    outputDir.set(layout.buildDirectory.dir("generated/events").get().asFile.path)
+    modelPackage.set("com.epam.java.specialization.recommendationservice.event")
+    globalProperties.set(mapOf("models" to "", "modelDocs" to "false", "modelTests" to "false"))
+    configOptions.set(mapOf(
+        "useSpringBoot4" to "true",
+        "useJackson3" to "true",
+        "useBeanValidation" to "true",
+        "openApiNullable" to "false",
+        "documentationProvider" to "none",
+        "annotationLibrary" to "none",
+        "generateJsonIncludeAnnotations" to "false",
+        "generateJsonSetterNullsAnnotations" to "false",
+    ))
+}
+
+sourceSets.main {
+    java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
+    java.srcDir(layout.buildDirectory.dir("generated/events/src/main/java"))
+}
+tasks.compileJava { dependsOn(tasks.openApiGenerate, openApiGenerateEvents) }

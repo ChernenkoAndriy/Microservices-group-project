@@ -1,0 +1,41 @@
+# Building blocks shared by every asyncapi.yaml: Kafka message headers and the fields every event carries.
+
+EventHeaders:
+  description: Kafka record headers sent with every event.
+  type: object
+  required:
+    - eventType
+  properties:
+    eventType:
+      description: Message name, e.g. `TrackLikedEvent`. Tells apart the messages of a topic that carries several.
+      type: string
+      maxLength: 100
+      example: TrackLikedEvent
+    X-Correlation-Id:
+      description: Correlation id of the HTTP request that caused the event, so logs can follow it across services.
+      type: string
+      format: uuid
+    traceparent:
+      description: W3C trace context of the producing span.
+      type: string
+      maxLength: 55
+
+EventId:
+  description: |
+    Unique id of this event. Delivery is at least once, so a consumer can get the same event twice;
+    it remembers processed ids and skips repeats.
+  type: string
+  format: uuid
+  example: 6f1c2a9e-0d4b-4f6e-8a51-2c7d9b3e4f10
+
+OccurredAt:
+  description: When the change happened in the producing service (RFC 3339, UTC).
+  type: string
+  format: date-time
+  example: '2026-10-05T09:14:00Z'
+
+LongKey:
+  description: Kafka record key, the decimal id named in the message description.
+  type: string
+  pattern: '^[1-9][0-9]{0,18}$'
+  example: '42'

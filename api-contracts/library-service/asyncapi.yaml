@@ -1,0 +1,155 @@
+asyncapi: 3.0.0
+info:
+  title: Spotty Library Service Events
+  version: 1.0.0
+  description: |
+    Kafka events published by library-service (User Library).
+    Shared conventions (headers, keys, delivery guarantees) are in `api-contracts/README.md`.
+
+defaultContentType: application/json
+
+servers:
+  kafka:
+    host: kafka:9092
+    protocol: kafka
+    description: Kafka inside the compose network or the cluster
+
+channels:
+  trackLikes:
+    address: library.track-likes
+    description: |
+      Likes and unlikes (Scenario 2). One topic for both, keyed by user id, so the consumer sees one user's
+      like and unlike of a track in the order they happened. Consumers: recommendation-service.
+    messages:
+      TrackLikedEvent:
+        $ref: '#/components/messages/TrackLikedEvent'
+      TrackUnlikedEvent:
+        $ref: '#/components/messages/TrackUnlikedEvent'
+
+  artistFollows:
+    address: library.artist-follows
+    description: |
+      Follows and unfollows of artists. One topic for both, keyed by artist id, so the consumer sees the
+      changes to one artist's followers in order. Consumers: notification-service, which keeps its own
+      subscriber list for new-release emails (Scenario 1).
+    messages:
+      ArtistFollowedEvent:
+        $ref: '#/components/messages/ArtistFollowedEvent'
+      ArtistUnfollowedEvent:
+        $ref: '#/components/messages/ArtistUnfollowedEvent'
+
+operations:
+  publishTrackLikes:
+    action: send
+    channel:
+      $ref: '#/channels/trackLikes'
+    summary: Sent only when a like is actually added or removed; repeated calls send nothing.
+    messages:
+      - $ref: '#/channels/trackLikes/messages/TrackLikedEvent'
+      - $ref: '#/channels/trackLikes/messages/TrackUnlikedEvent'
+
+  publishArtistFollows:
+    action: send
+    channel:
+      $ref: '#/channels/artistFollows'
+    summary: Sent only when a follow is actually added or removed; repeated calls send nothing.
+    messages:
+      - $ref: '#/channels/artistFollows/messages/ArtistFollowedEvent'
+      - $ref: '#/channels/artistFollows/messages/ArtistUnfollowedEvent'
+
+components:
+  messages:
+    TrackLikedEvent:
+      name: TrackLikedEvent
+      title: Track liked
+      summary: A user liked a track. Key is `userId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/TrackLikeChange'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
+    TrackUnlikedEvent:
+      name: TrackUnlikedEvent
+      title: Track unliked
+      summary: A user removed a like. Key is `userId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/TrackLikeChange'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
+    ArtistFollowedEvent:
+      name: ArtistFollowedEvent
+      title: Artist followed
+      summary: A user followed an artist. Key is `artistId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/ArtistFollowChange'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
+    ArtistUnfollowedEvent:
+      name: ArtistUnfollowedEvent
+      title: Artist unfollowed
+      summary: A user unfollowed an artist. Key is `artistId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/ArtistFollowChange'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
+  schemas:
+    TrackLikeChange:
+      description: Payload of `TrackLikedEvent` and `TrackUnlikedEvent`; `occurredAt` is the time of the like or unlike.
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - occurredAt
+        - userId
+        - trackId
+      properties:
+        eventId:
+          $ref: '../common/events.yaml#/EventId'
+        occurredAt:
+          $ref: '../common/events.yaml#/OccurredAt'
+        userId:
+          $ref: '../common/schemas.yaml#/Id'
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+
+    ArtistFollowChange:
+      description: Payload of `ArtistFollowedEvent` and `ArtistUnfollowedEvent`.
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - occurredAt
+        - userId
+        - artistId
+      properties:
+        eventId:
+          $ref: '../common/events.yaml#/EventId'
+        occurredAt:
+          $ref: '../common/events.yaml#/OccurredAt'
+        userId:
+          $ref: '../common/schemas.yaml#/Id'
+        artistId:
+          $ref: '../common/schemas.yaml#/Id'

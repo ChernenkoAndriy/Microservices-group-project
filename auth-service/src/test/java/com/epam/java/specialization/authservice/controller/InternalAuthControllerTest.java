@@ -1,11 +1,8 @@
 package com.epam.java.specialization.authservice.controller;
 
-import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
-import com.epam.java.specialization.authservice.exception.TokenIsNotValidException;
 import com.epam.java.specialization.authservice.internal.api.dto.UserRoleDto;
 import com.epam.java.specialization.authservice.internal.api.dto.UserStatusDto;
 import com.epam.java.specialization.authservice.internal.api.dto.UserSummaryDto;
-import com.epam.java.specialization.authservice.service.AuthService;
 import com.epam.java.specialization.authservice.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,71 +27,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class InternalAuthControllerTest {
 
     @Mock
-    private AuthService authService;
-    @Mock
     private UserService userService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mockMvc = ControllerTestSupport.mockMvc(new InternalAuthController(authService, userService));
-    }
-
-    @Test
-    void tokenIsValidStripsBearerPrefix() throws Exception {
-        when(authService.isTokenValid("token")).thenReturn(true);
-
-        mockMvc.perform(get("/internal/auth/token-is-valid").header("Authorization", "Bearer token"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("true"));
-    }
-
-    @Test
-    void tokenIsValidWithoutHeaderIsFalse() throws Exception {
-        when(authService.isTokenValid(null)).thenReturn(false);
-
-        mockMvc.perform(get("/internal/auth/token-is-valid"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("false"));
-    }
-
-    @Test
-    void getUserIdFromToken() throws Exception {
-        when(authService.getUserIdFromToken("token")).thenReturn(7L);
-
-        mockMvc.perform(get("/internal/auth/get-user-id-from-token").header("Authorization", "Bearer token"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("7"));
-    }
-
-    @Test
-    void getUserIdFromInvalidTokenIsUnauthorized() throws Exception {
-        when(authService.getUserIdFromToken("junk")).thenThrow(new TokenIsNotValidException("bad"));
-
-        mockMvc.perform(get("/internal/auth/get-user-id-from-token").header("Authorization", "Bearer junk"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("TOKEN_IS_NOT_VALID"));
-    }
-
-    @Test
-    void getUserIdOfDeletedUserIsNotFound() throws Exception {
-        when(authService.getUserIdFromToken("token")).thenThrow(new EntityDoesNotExistException("gone"));
-
-        mockMvc.perform(get("/internal/auth/get-user-id-from-token").header("Authorization", "Bearer token"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("ENTITY_DOES_NOT_EXIST"));
-    }
-
-    @Test
-    void getUserByEmail() throws Exception {
-        when(userService.getUserByEmail("bob@example.com")).thenReturn(
-                summary(2L, "bob"));
-
-        mockMvc.perform(get("/internal/users/bob@example.com"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(2))
-                .andExpect(jsonPath("$.role").value("ARTIST"));
+        mockMvc = ControllerTestSupport.mockMvc(new InternalAuthController(userService));
     }
 
     @Test

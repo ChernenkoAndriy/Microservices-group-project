@@ -1,0 +1,16 @@
+openapi: 3.0.3
+info:
+  title: Catalog Service event models
+  version: 1.0.0
+  description: |
+    Code generation only: openapi-generator cannot read AsyncAPI, so this file lists the event payload
+    schemas this service sends or receives and points at their asyncapi.yaml. Models only, no paths.
+paths: {}
+components:
+  schemas:
+    TrackPublishedEvent:
+      $ref: './asyncapi.yaml#/components/schemas/TrackPublishedEvent'
+    TrackSnapshot:
+      $ref: './asyncapi.yaml#/components/schemas/TrackSnapshot'
+    AssetReadySnapshot:
+      $ref: '../streaming-service/asyncapi.yaml#/components/schemas/AssetReadySnapshot'

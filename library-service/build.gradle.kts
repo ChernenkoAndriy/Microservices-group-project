@@ -20,6 +20,8 @@ repositories {
 }
 
 dependencies {
+    implementation("org.mapstruct:mapstruct:1.6.3")
+    annotationProcessor("org.mapstruct:mapstruct-processor:1.6.3")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
@@ -31,6 +33,14 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+// MapStruct mappers are Spring beans, and a target property left unmapped is a compile error.
+tasks.withType<JavaCompile> {
+    options.compilerArgs.addAll(listOf(
+        "-Amapstruct.defaultComponentModel=spring",
+        "-Amapstruct.unmappedTargetPolicy=ERROR",
+    ))
 }
 
 openApiGenerate {
@@ -59,5 +69,75 @@ openApiGenerate {
     )
 }
 
-sourceSets.main { java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java")) }
-tasks.compileJava { dependsOn(tasks.openApiGenerate) }
+// Kafka event payloads (api-contracts/library-service/asyncapi.yaml), generated as plain models.
+val openApiGenerateEvents by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
+    generatorName.set("spring")
+    inputSpec.set("$rootDir/../api-contracts/library-service/event-models.yaml")
+    outputDir.set(layout.buildDirectory.dir("generated/events").get().asFile.path)
+    modelPackage.set("com.epam.java.specialization.libraryservice.event")
+    globalProperties.set(mapOf("models" to "", "modelDocs" to "false", "modelTests" to "false"))
+    configOptions.set(mapOf(
+        "useSpringBoot4" to "true",
+        "useJackson3" to "true",
+        "useBeanValidation" to "true",
+        "openApiNullable" to "false",
+        "documentationProvider" to "none",
+        "annotationLibrary" to "none",
+        "generateJsonIncludeAnnotations" to "false",
+        "generateJsonSetterNullsAnnotations" to "false",
+    ))
+}
+
+// Client for catalog-service's internal API (api-contracts/catalog-service/internal-openapi.yaml).
+val openApiGenerateCatalogClient by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
+    generatorName.set("spring")
+    library.set("spring-http-interface")
+    inputSpec.set("$rootDir/../api-contracts/catalog-service/internal-openapi.yaml")
+    outputDir.set(layout.buildDirectory.dir("generated/catalog-client").get().asFile.path)
+    apiPackage.set("com.epam.java.specialization.libraryservice.client.catalog.api")
+    modelPackage.set("com.epam.java.specialization.libraryservice.client.catalog.dto")
+    modelNameSuffix.set("Dto")
+    typeMappings.set(mapOf("URI" to "String"))
+    configOptions.set(mapOf(
+        "useSpringBoot4" to "true",
+        "useJackson3" to "true",
+        "useTags" to "true",
+        "openApiNullable" to "false",
+        "documentationProvider" to "none",
+        "annotationLibrary" to "none",
+        "generateJsonIncludeAnnotations" to "false",
+        "generateJsonSetterNullsAnnotations" to "false",
+        "configPackage" to "org.openapitools.configuration.catalogclient",
+    ))
+}
+
+// Client for auth-service's internal API (api-contracts/auth-service/internal-openapi.yaml).
+val openApiGenerateAuthClient by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
+    generatorName.set("spring")
+    library.set("spring-http-interface")
+    inputSpec.set("$rootDir/../api-contracts/auth-service/internal-openapi.yaml")
+    outputDir.set(layout.buildDirectory.dir("generated/auth-client").get().asFile.path)
+    apiPackage.set("com.epam.java.specialization.libraryservice.client.auth.api")
+    modelPackage.set("com.epam.java.specialization.libraryservice.client.auth.dto")
+    modelNameSuffix.set("Dto")
+    typeMappings.set(mapOf("URI" to "String"))
+    configOptions.set(mapOf(
+        "useSpringBoot4" to "true",
+        "useJackson3" to "true",
+        "useTags" to "true",
+        "openApiNullable" to "false",
+        "documentationProvider" to "none",
+        "annotationLibrary" to "none",
+        "generateJsonIncludeAnnotations" to "false",
+        "generateJsonSetterNullsAnnotations" to "false",
+        "configPackage" to "org.openapitools.configuration.authclient",
+    ))
+}
+
+sourceSets.main {
+    java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
+    java.srcDir(layout.buildDirectory.dir("generated/events/src/main/java"))
+    java.srcDir(layout.buildDirectory.dir("generated/catalog-client/src/main/java"))
+    java.srcDir(layout.buildDirectory.dir("generated/auth-client/src/main/java"))
+}
+tasks.compileJava { dependsOn(tasks.openApiGenerate, openApiGenerateEvents, openApiGenerateCatalogClient, openApiGenerateAuthClient) }

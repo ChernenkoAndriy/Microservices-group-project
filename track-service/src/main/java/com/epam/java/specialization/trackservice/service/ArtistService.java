@@ -5,7 +5,7 @@ import com.epam.java.specialization.trackservice.client.ArtistDirectory;
 import com.epam.java.specialization.trackservice.client.ArtistProfiles;
 import com.epam.java.specialization.trackservice.client.auth.dto.UserSummaryDto;
 import com.epam.java.specialization.trackservice.exception.CatalogException;
-import com.epam.java.specialization.trackservice.mapper.TrackMapper;
+import com.epam.java.specialization.trackservice.mapper.DateTimeMapping;
 import com.epam.java.specialization.trackservice.model.TrackStatus;
 import com.epam.java.specialization.trackservice.repository.TrackRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ public class ArtistService {
                 .orElseThrow(() -> CatalogException.serviceUnavailable("ARTIST_PROFILE_UNAVAILABLE",
                         "The artist profile cannot be loaded right now. Try again later."));
         return new ArtistDto(artistId, ArtistProfiles.UNKNOWN_ARTIST, trackCount, 0,
-                TrackMapper.toOffsetDateTime(firstTrack));
+                DateTimeMapping.toOffsetDateTime(firstTrack));
     }
 
     static CatalogException artistNotFound(Long artistId) {

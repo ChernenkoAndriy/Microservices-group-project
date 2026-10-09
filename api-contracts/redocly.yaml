@@ -3,18 +3,30 @@ apis:
     root: auth-service/openapi.yaml
   auth-service-internal:
     root: auth-service/internal-openapi.yaml
+  auth-service-events:
+    root: auth-service/asyncapi.yaml
   catalog-service:
     root: catalog-service/openapi.yaml
   catalog-service-internal:
     root: catalog-service/internal-openapi.yaml
+  catalog-service-events:
+    root: catalog-service/asyncapi.yaml
   library-service:
     root: library-service/openapi.yaml
+  library-service-events:
+    root: library-service/asyncapi.yaml
   streaming-service:
     root: streaming-service/openapi.yaml
+  streaming-service-events:
+    root: streaming-service/asyncapi.yaml
   recommendation-service:
     root: recommendation-service/openapi.yaml
+  recommendation-service-events:
+    root: recommendation-service/asyncapi.yaml
   notification-service:
     root: notification-service/openapi.yaml
+  notification-service-events:
+    root: notification-service/asyncapi.yaml
 
 extends:
   - recommended
@@ -23,3 +35,7 @@ rules:
   info-license: off
   no-server-example.com: off
   operation-4xx-response: off
+
+async3Rules:
+  # Kafka runs inside the compose network / cluster without authentication.
+  security-defined: off

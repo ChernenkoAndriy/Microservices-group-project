@@ -7,6 +7,7 @@ import com.epam.java.specialization.trackservice.api.dto.TrackSortDto;
 import com.epam.java.specialization.trackservice.client.ArtistDirectory;
 import com.epam.java.specialization.trackservice.client.ArtistProfiles;
 import com.epam.java.specialization.trackservice.exception.CatalogException;
+import com.epam.java.specialization.trackservice.internal.api.dto.InternalTrackInfoDto;
 import com.epam.java.specialization.trackservice.mapper.TrackMapper;
 import com.epam.java.specialization.trackservice.model.Genre;
 import com.epam.java.specialization.trackservice.model.Track;
@@ -47,6 +48,7 @@ public class TrackService {
     private final GenreRepository genreRepository;
     private final ArtistDirectory artistDirectory;
     private final Clock clock;
+    private final TrackMapper trackMapper;
 
     @Transactional
     public TrackDto create(Long artistId, CreateTrackRequestDto request) {
@@ -66,7 +68,7 @@ public class TrackService {
         track.setStatus(TrackStatus.AWAITING_AUDIO);
         Track saved = trackRepository.saveAndFlush(track);
         log.debug("Artist id={} created track id={}", artistId, saved.getId());
-        return TrackMapper.toDto(saved, artistDirectory.findProfile(artistId));
+        return trackMapper.toDto(saved, artistDirectory.findProfile(artistId));
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +76,7 @@ public class TrackService {
         Track track = trackRepository.findById(trackId)
                 .filter(t -> t.isPublished() || callerIsAdmin || t.getArtistId().equals(callerId))
                 .orElseThrow(() -> trackNotFound(trackId));
-        return TrackMapper.toDto(track, artistDirectory.findProfile(track.getArtistId()));
+        return trackMapper.toDto(track, artistDirectory.findProfile(track.getArtistId()));
     }
 
     @Transactional(readOnly = true)
@@ -97,7 +99,7 @@ public class TrackService {
         if (artists.available() && !artists.isArtist(artistId)) {
             throw ArtistService.artistNotFound(artistId);
         }
-        return TrackMapper.toPage(tracks, artists);
+        return trackMapper.toPage(tracks, artists);
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +107,14 @@ public class TrackService {
         Page<Track> tracks = trackRepository.findAll(
                 Specification.allOf(byArtist(artistId), hasStatus(status)),
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "id")));
-        return TrackMapper.toPage(tracks, artistDirectory.findProfile(artistId));
+        return trackMapper.toPage(tracks, artistDirectory.findProfile(artistId));
+    }
+
+    @Transactional(readOnly = true)
+    public InternalTrackInfoDto getInfo(Long trackId) {
+        return trackRepository.findById(trackId)
+                .map(trackMapper::toInternalInfo)
+                .orElseThrow(() -> trackNotFound(trackId));
     }
 
     @Transactional
@@ -129,7 +138,7 @@ public class TrackService {
         ArtistProfiles artists = artistIds.isEmpty()
                 ? new ArtistProfiles(Map.of(), true)
                 : artistDirectory.findProfiles(artistIds);
-        return TrackMapper.toPage(tracks, artists);
+        return trackMapper.toPage(tracks, artists);
     }
 
     private List<Genre> resolveGenres(Set<String> slugs) {

@@ -6,16 +6,19 @@ info:
     Service-to-service endpoints of auth-service. They live under `/internal/**`, which the gateway
     never routes, and every call must carry the shared service token in `X-Internal-Token`.
 
-    Consumers generate a client from this file (see `api-contracts/README.md`). catalog-service uses
-    `GET /internal/users?ids=` to add artist names to tracks with one call per page instead of one per track.
+    Consumers generate a client from this file (see `api-contracts/README.md`):
+    - catalog-service: `GET /internal/users?ids=` adds artist names to tracks with one call per page
+      instead of one per track.
+    - library-service: the same call checks that an artist exists before a follow.
+
+    Access tokens are not checked here: the gateway verifies the JWT itself and forwards `X-User-Id` /
+    `X-User-Roles`. Other changes to users reach other services as `UserSnapshot` events (`asyncapi.yaml`).
 
 servers:
   - url: http://auth-service:8081
     description: auth-service inside the compose network or the cluster
 
 tags:
-  - name: InternalTokens
-    description: Access token checks for other services.
   - name: InternalUsers
     description: User lookups for other services.
 
@@ -23,46 +26,6 @@ security:
   - internalToken: []
 
 paths:
-  /internal/auth/token-is-valid:
-    get:
-      tags: [InternalTokens]
-      operationId: isTokenValid
-      summary: Check an access token
-      parameters:
-        - $ref: '#/components/parameters/BearerToken'
-      responses:
-        '200':
-          description: Whether the token is valid. A missing token is not valid.
-          content:
-            application/json:
-              schema:
-                type: boolean
-        '401':
-          $ref: '../common/responses.yaml#/Unauthorized'
-
-  /internal/auth/get-user-id-from-token:
-    get:
-      tags: [InternalTokens]
-      operationId: getUserIdFromToken
-      summary: Resolve the user id of an access token
-      parameters:
-        - $ref: '#/components/parameters/BearerToken'
-      responses:
-        '200':
-          description: The id of the token's user.
-          content:
-            application/json:
-              schema:
-                $ref: '../common/schemas.yaml#/Id'
-        '401':
-          description: The service token or the access token is missing or invalid (`code` = `TOKEN_IS_NOT_VALID`).
-          content:
-            application/problem+json:
-              schema:
-                $ref: '../common/schemas.yaml#/ProblemDetail'
-        '404':
-          $ref: '../common/responses.yaml#/NotFound'
-
   /internal/users:
     get:
       tags: [InternalUsers]
@@ -100,29 +63,6 @@ paths:
         '401':
           $ref: '../common/responses.yaml#/Unauthorized'
 
-  /internal/users/{email}:
-    get:
-      tags: [InternalUsers]
-      operationId: getUserByEmail
-      summary: Look up a user by email
-      parameters:
-        - name: email
-          in: path
-          required: true
-          schema:
-            $ref: '../common/schemas.yaml#/Email'
-      responses:
-        '200':
-          description: The user.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserSummary'
-        '401':
-          $ref: '../common/responses.yaml#/Unauthorized'
-        '404':
-          $ref: '../common/responses.yaml#/NotFound'
-
 components:
   securitySchemes:
     internalToken:
@@ -130,16 +70,6 @@ components:
       type: apiKey
       in: header
       name: X-Internal-Token
-
-  parameters:
-    BearerToken:
-      name: Authorization
-      in: header
-      required: false
-      description: The access token to check, as `Bearer <token>`.
-      schema:
-        type: string
-        maxLength: 4200
 
   schemas:
     UserSummary:

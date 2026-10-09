@@ -1,5 +1,9 @@
 package com.epam.java.specialization.authservice.service;
 
+import org.mockito.Spy;
+import org.mapstruct.factory.Mappers;
+import com.epam.java.specialization.authservice.mapper.UserMapper;
+import com.epam.java.specialization.authservice.mapper.InternalUserMapper;
 import com.epam.java.specialization.authservice.api.dto.AdminUpdateUserRequestDto;
 import com.epam.java.specialization.authservice.api.dto.PageMetadataDto;
 import com.epam.java.specialization.authservice.api.dto.UpdateProfileRequestDto;
@@ -51,6 +55,11 @@ class UserServiceTest {
     private UserRepository userRepository;
     @Mock
     private RefreshTokenService refreshTokenService;
+
+    @Spy
+    private UserMapper userMapper = Mappers.getMapper(UserMapper.class);
+    @Spy
+    private InternalUserMapper internalUserMapper = Mappers.getMapper(InternalUserMapper.class);
 
     @InjectMocks
     private UserService userService;
@@ -239,22 +248,7 @@ class UserServiceTest {
     }
 
     @Nested
-    class GetUserByEmail {
-
-        @Test
-        void returnsUser() {
-            when(userRepository.findByEmail("user1@example.com")).thenReturn(Optional.of(listener(1L)));
-
-            assertThat(userService.getUserByEmail("user1@example.com").getId()).isEqualTo(1L);
-        }
-
-        @Test
-        void throwsForUnknownEmail() {
-            when(userRepository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
-
-            assertThatThrownBy(() -> userService.getUserByEmail("nobody@example.com"))
-                    .isInstanceOf(EntityDoesNotExistException.class);
-        }
+    class GetUsersByIds {
 
         @Test
         void getUsersByIdsLoadsAllInOneQuery() {

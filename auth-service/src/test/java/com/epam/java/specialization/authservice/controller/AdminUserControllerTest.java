@@ -1,5 +1,7 @@
 package com.epam.java.specialization.authservice.controller;
 
+import org.mapstruct.factory.Mappers;
+import com.epam.java.specialization.authservice.mapper.UserMapper;
 import com.epam.java.specialization.authservice.api.dto.AdminUpdateUserRequestDto;
 import com.epam.java.specialization.authservice.api.dto.PageMetadataDto;
 import com.epam.java.specialization.authservice.api.dto.UserPageDto;
@@ -43,7 +45,8 @@ class AdminUserControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = ControllerTestSupport.mockMvc(new AdminUserController(userService, new CurrentUser(jwtService)));
+        mockMvc = ControllerTestSupport.mockMvc(new AdminUserController(userService, new CurrentUser(jwtService),
+                Mappers.getMapper(UserMapper.class)));
     }
 
     @Test

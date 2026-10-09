@@ -20,6 +20,7 @@ public class ArtistController implements ArtistsApi {
     private final ArtistService artistService;
     private final TrackService trackService;
     private final CurrentUser currentUser;
+    private final TrackMapper trackMapper;
 
     @Override
     public ResponseEntity<ArtistDto> getArtist(Long artistId) {
@@ -34,6 +35,6 @@ public class ArtistController implements ArtistsApi {
     @Override
     public ResponseEntity<TrackPageDto> listMyTracks(TrackStatusDto status, Integer page, Integer size) {
         Long artistId = currentUser.requireRole(CurrentUser.ARTIST);
-        return ResponseEntity.ok(trackService.listMyTracks(artistId, TrackMapper.toModel(status), page, size));
+        return ResponseEntity.ok(trackService.listMyTracks(artistId, trackMapper.toModel(status), page, size));
     }
 }

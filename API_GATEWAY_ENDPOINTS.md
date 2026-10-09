@@ -41,7 +41,7 @@ Auth column: **public** = no token; **user** = any authenticated role; **artist*
 | GET | `/api/v1/admin/users` | admin | List or search users |
 | PATCH | `/api/v1/admin/users/{id}` | admin | Change role or status (block/unblock) |
 
-Not exposed: service-to-service endpoints live under `/internal/**` (`/internal/auth/token-is-valid`, `/internal/auth/get-user-id-from-token`, and the raw lookup `/internal/users/{email}`). The gateway must not route `/internal/**`. A JWKS / public-key endpoint, if used, is consumed by the gateway internally rather than routed.
+Not exposed: service-to-service endpoints live under `/internal/**` (`/internal/users?ids=`, see `api-contracts/README.md`). Tokens are not checked through internal calls: the gateway verifies the JWT itself. The gateway must not route `/internal/**`. A JWKS / public-key endpoint, if used, is consumed by the gateway internally rather than routed.
 
 ### 3.2 Catalog (→ track-service / `catalog-service`)
 
