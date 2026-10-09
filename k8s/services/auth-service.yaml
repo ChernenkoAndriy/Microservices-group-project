@@ -48,6 +48,12 @@ spec:
                   name: spotty-secrets
                   key: INTERNAL_API_TOKEN
                   optional: true
+            - name: AUTH_SERVICE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: spotty-secrets
+                  key: AUTH_SERVICE_JWT_SECRET
+                  optional: true
           resources:
             requests:
               cpu: 250m

@@ -57,6 +57,12 @@ spec:
                 configMapKeyRef:
                   name: spotty-config
                   key: LIBRARY_SERVICE_URL
+            - name: AUTH_SERVICE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: spotty-secrets
+                  key: AUTH_SERVICE_JWT_SECRET
+                  optional: true
           resources:
             requests:
               cpu: 250m

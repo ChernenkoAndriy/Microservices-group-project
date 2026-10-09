@@ -4,7 +4,19 @@ server:
 spring:
   application:
     name: api-gateway
+  # Timeouts for calls from the gateway to the services. Without them a hung service holds a gateway thread forever.
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 10s
   cloud:
+    circuitbreaker:
+      resilience4j:
+        # The read timeout above already bounds each call; the time limiter would also cut off long streams.
+        disable-time-limiter: true
+        # Run the call on the request thread and cap it with a semaphore bulkhead instead of a thread pool.
+        disable-thread-pool: true
+        enable-semaphore-default-bulkhead: true
     gateway:
       server:
         webmvc:
@@ -13,34 +25,109 @@ spring:
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/v1/admin/users/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: auth-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
             - id: admin-notifications
               uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
               predicates:
                 - Path=/api/v1/admin/notifications/**,/api/v1/admin/notification-templates/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: notification-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
             - id: auth
               uri: ${AUTH_SERVICE_URL:http://localhost:8081}
               predicates:
                 - Path=/api/v1/auth/**,/api/v1/users/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: auth-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
             - id: tracks
               uri: ${CATALOG_SERVICE_URL:http://localhost:8082}
               predicates:
                 - Path=/api/v1/tracks/**,/api/v1/artists/**,/api/v1/albums/**,/api/v1/genres/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: catalog-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
             - id: library
               uri: ${LIBRARY_SERVICE_URL:http://localhost:8086}
               predicates:
                 - Path=/api/v1/library/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: library-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
             - id: streaming
               uri: ${STREAMING_SERVICE_URL:http://localhost:8083}
               predicates:
                 - Path=/api/v1/streaming/**,/api/v1/media/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: streaming-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
             - id: recommendations
               uri: ${RECOMMENDATION_SERVICE_URL:http://localhost:8084}
               predicates:
                 - Path=/api/v1/recommendations/**,/api/v1/analytics/**,/api/v1/charts/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: recommendation-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
             - id: notifications
               uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
               predicates:
                 - Path=/api/v1/notifications/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    id: notification-service
+                    fallbackUri: forward:/fallback
+                    statusCodes: 502,503,504
+# One circuit breaker and one bulkhead per service (the `id` of the CircuitBreaker filter on each route).
+# Failures are connection errors, timeouts and 502/503/504; the client then gets a problem body from /fallback.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 5s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        ignore-exceptions:
+          - io.github.resilience4j.bulkhead.BulkheadFullException
+  bulkhead:
+    configs:
+      default:
+        # At most this many requests in flight to one service; more get 503 at once instead of queuing.
+        max-concurrent-calls: 100
+        max-wait-duration: 0
+
+logging:
+  pattern:
+    correlation: "[%X{correlationId:-}] "
+
 jwt:
   # Must be the same Base64-encoded HMAC key auth-service signs tokens with (same env var as auth-service).
   secret: ${AUTH_SERVICE_JWT_SECRET:c3BvdHR5LWF1dGgtc2VydmljZS1kZXYtc2VjcmV0LWtleS1jaGFuZ2UtbWUtcGxlYXNl}
@@ -69,6 +156,12 @@ gateway:
           - /api/v1/streaming/{trackId}
           - /actuator/health/**
           - /actuator/info
+
+  # Requests per client (user id, or IP when anonymous). Over the limit: 429 with Retry-After.
+  rate-limit:
+    enabled: true
+    capacity: 50
+    refill-per-second: 20
 
 management:
   endpoints:

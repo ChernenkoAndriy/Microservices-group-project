@@ -340,7 +340,7 @@ components:
 
     LoginRequest:
       type: object
-      additionalProperties: false
+      description: Tolerant reader, unknown properties are ignored.
       required:
         - email
         - password
