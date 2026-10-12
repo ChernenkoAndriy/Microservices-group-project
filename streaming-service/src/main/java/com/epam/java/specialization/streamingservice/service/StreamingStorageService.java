@@ -3,6 +3,7 @@ package com.epam.java.specialization.streamingservice.service;
 import io.minio.GetObjectArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.StatObjectArgs;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +37,19 @@ public class StreamingStorageService {
                             .build()
             );
         }
+    }
+
+    public long objectSize(String fileName) throws Exception {
+        return minioClient.statObject(
+                StatObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(fileName)
+                        .build()
+        ).size();
+    }
+
+    public String storageUrl(String fileName) {
+        return "s3://" + bucketName + "/" + fileName;
     }
 
     public InputStream getAudioStream(String fileName) throws Exception {

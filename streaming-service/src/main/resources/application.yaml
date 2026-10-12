@@ -15,6 +15,43 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5436/spotty_streaming_db}
+    username: ${SPRING_DATASOURCE_USERNAME:spotty_streaming_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:your_secure_streaming_password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Idempotent producer: a retried send never writes the same record twice to a partition.
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        # Fail fast while Kafka is down; the event stays in the outbox and the relay tries again.
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+
+events:
+  topics:
+    asset-ready: streaming.asset.ready
+    partitions: 3
+
+outbox:
+  relay:
+    poll-interval-ms: 1000
+    batch-size: 50
+    send-timeout-ms: 10000
+
+transcoding:
+  worker:
+    poll-interval-ms: 2000
 
 storage:
   s3:

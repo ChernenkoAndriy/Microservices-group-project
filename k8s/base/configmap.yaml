@@ -30,6 +30,14 @@ data:
   LIBRARY_DB_HOST: "library-db"
   SPRING_DATASOURCE_LIBRARY_URL: "jdbc:postgresql://library-db:5432/spotty_library_db"
 
+  STREAMING_DB_NAME: "spotty_streaming_db"
+  STREAMING_DB_USER: "spotty_streaming_user"
+  STREAMING_DB_PORT: "5432"
+  STREAMING_DB_HOST: "streaming-db"
+  SPRING_DATASOURCE_STREAMING_URL: "jdbc:postgresql://streaming-db:5432/spotty_streaming_db"
+
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+
   CLICKHOUSE_DB: "spotty_analytics_db"
   CLICKHOUSE_USER: "spotty_clickhouse_user"
   CLICKHOUSE_HTTP_PORT: "8123"

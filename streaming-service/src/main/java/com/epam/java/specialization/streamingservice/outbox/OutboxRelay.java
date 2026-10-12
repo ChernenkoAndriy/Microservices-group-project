@@ -1,0 +1,77 @@
+package com.epam.java.specialization.streamingservice.outbox;
+
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+/**
+ * Sends unsent outbox events to Kafka, oldest first, and marks them sent. Delivery is at least once:
+ * a crash after the send but before the commit sends the event again, and consumers skip the repeat
+ * by its {@code eventId}. When a send fails the batch stops, so events of one key keep their order.
+ */
+@Component
+@ConditionalOnProperty(name = "outbox.relay.enabled", havingValue = "true", matchIfMissing = true)
+public class OutboxRelay {
+
+    public static final String EVENT_TYPE_HEADER = "eventType";
+
+    private static final Logger log = LoggerFactory.getLogger(OutboxRelay.class);
+
+    private final OutboxEventRepository repository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final int batchSize;
+    private final long sendTimeoutMs;
+
+    public OutboxRelay(OutboxEventRepository repository, KafkaTemplate<String, String> kafkaTemplate,
+                       @Value("${outbox.relay.batch-size:50}") int batchSize,
+                       @Value("${outbox.relay.send-timeout-ms:10000}") long sendTimeoutMs) {
+        this.repository = repository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.batchSize = batchSize;
+        this.sendTimeoutMs = sendTimeoutMs;
+    }
+
+    @Scheduled(fixedDelayString = "${outbox.relay.poll-interval-ms:1000}")
+    @Transactional
+    public void relay() {
+        List<OutboxEvent> batch = repository.lockUnsent(batchSize);
+        for (OutboxEvent event : batch) {
+            try {
+                kafkaTemplate.send(toRecord(event)).get(sendTimeoutMs, TimeUnit.MILLISECONDS);
+                event.markSent(Instant.now());
+                log.info("Sent outbox event id={} type={} topic={} key={}",
+                        event.getId(), event.getEventType(), event.getTopic(), event.getMessageKey());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                event.markFailedAttempt("Interrupted");
+                return;
+            } catch (ExecutionException | TimeoutException | RuntimeException e) {
+                Throwable cause = e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e;
+                event.markFailedAttempt(cause.toString());
+                log.warn("Could not send outbox event id={} (attempt {}), will retry: {}",
+                        event.getId(), event.getAttempts(), cause.toString());
+                return;
+            }
+        }
+    }
+
+    private static ProducerRecord<String, String> toRecord(OutboxEvent event) {
+        ProducerRecord<String, String> record =
+                new ProducerRecord<>(event.getTopic(), event.getMessageKey(), event.getPayload());
+        record.headers().add(EVENT_TYPE_HEADER, event.getEventType().getBytes(StandardCharsets.UTF_8));
+        return record;
+    }
+}

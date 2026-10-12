@@ -107,6 +107,68 @@ services:
     networks:
       - spotty-network
 
+  streaming-db:
+    image: postgres:17-alpine
+    container_name: spotty-streaming-db
+    environment:
+      POSTGRES_DB: ${STREAMING_DB_NAME:-spotty_streaming_db}
+      POSTGRES_USER: ${STREAMING_DB_USER:-spotty_streaming_user}
+      POSTGRES_PASSWORD: ${STREAMING_DB_PASSWORD:-your_secure_streaming_password}
+    volumes:
+      - streaming_db_data:/var/lib/postgresql/data
+    ports:
+      - "${STREAMING_DB_PORT:-5436}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${STREAMING_DB_USER:-spotty_streaming_user} -d ${STREAMING_DB_NAME:-spotty_streaming_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spotty-network
+
+  # Single-node Kafka in KRaft mode. Containers use kafka:9092, the host uses localhost:9094.
+  kafka:
+    image: apache/kafka:3.9.1
+    container_name: spotty-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:${KAFKA_EXTERNAL_PORT:-9094}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    ports:
+      - "${KAFKA_EXTERNAL_PORT:-9094}:9094"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - spotty-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: spotty-kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: spotty
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "${KAFKA_UI_PORT:-8090}:8080"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - spotty-network
+
   auth-service:
     build:
       context: ./auth-service
@@ -141,11 +203,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD}
       AUTH_SERVICE_URL: http://auth-service:8081
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SERVER_PORT: 8082
     ports:
       - "${CATALOG_SERVICE_PORT:-8082}:8082"
     depends_on:
       catalog-db:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - spotty-network
@@ -161,11 +226,19 @@ services:
       S3_ENDPOINT: http://media-storage:9000
       S3_ACCESS_KEY: ${MINIO_ROOT_USER}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://streaming-db:5432/${STREAMING_DB_NAME:-spotty_streaming_db}
+      SPRING_DATASOURCE_USERNAME: ${STREAMING_DB_USER:-spotty_streaming_user}
+      SPRING_DATASOURCE_PASSWORD: ${STREAMING_DB_PASSWORD:-your_secure_streaming_password}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       SERVER_PORT: 8083
     ports:
       - "${STREAMING_SERVICE_PORT:-8083}:8083"
     depends_on:
       media-storage:
+        condition: service_started
+      streaming-db:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - spotty-network
@@ -262,6 +335,8 @@ volumes:
   clickhouse_data:
   notification_db_data:
   library_db_data:
+  streaming_db_data:
+  kafka_data:
 
 networks:
   spotty-network:

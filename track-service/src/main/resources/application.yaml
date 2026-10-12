@@ -15,6 +15,36 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: catalog-service
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      isolation-level: read_committed
+    producer:
+      # Used by @RetryableTopic to forward failed records to the retry and dead letter topics.
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+    listener:
+      # The offset is committed only after the record was handled (or forwarded to a retry/dead letter topic).
+      ack-mode: record
+
+events:
+  topics:
+    asset-ready: streaming.asset.ready
+    partitions: 3
+  consumer:
+    retry:
+      attempts: 4
+      delay-ms: 1000
+      multiplier: 2
+      max-delay-ms: 10000
 
 internal-api:
   token: ${INTERNAL_API_TOKEN:dev-internal-token}

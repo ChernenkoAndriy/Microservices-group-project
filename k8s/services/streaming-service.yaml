@@ -41,6 +41,26 @@ spec:
                 configMapKeyRef:
                   name: spotty-config
                   key: S3_BUCKET_NAME
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: SPRING_DATASOURCE_STREAMING_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: STREAMING_DB_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spotty-secrets
+                  key: STREAMING_DB_PASSWORD
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
           resources:
             requests:
               cpu: 250m
