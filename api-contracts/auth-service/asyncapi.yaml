@@ -15,6 +15,16 @@ servers:
     description: Kafka inside the compose network or the cluster
 
 channels:
+  userEmails:
+    address: auth.user.email
+    description: |
+      Email delivery requests from auth-service. Each message asks notification-service to render
+      a specific template and send it to the given address. Non-compacted: every message triggers
+      exactly one email. Consumers: notification-service.
+    messages:
+      AuthEmailEvent:
+        $ref: '#/components/messages/AuthEmailEvent'
+
   userSnapshots:
     address: auth.user.snapshot
     description: |
@@ -30,6 +40,14 @@ channels:
         bindingVersion: 0.5.0
 
 operations:
+  publishAuthEmail:
+    action: send
+    channel:
+      $ref: '#/channels/userEmails'
+    summary: Sent when auth-service needs notification-service to email a user.
+    messages:
+      - $ref: '#/channels/userEmails/messages/AuthEmailEvent'
+
   publishUserSnapshot:
     action: send
     channel:
@@ -40,6 +58,20 @@ operations:
 
 components:
   messages:
+    AuthEmailEvent:
+      name: AuthEmailEvent
+      title: Auth email request
+      summary: Asks notification-service to send a templated email to a user. Key is `userId`.
+      headers:
+        $ref: '../common/events.yaml#/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/AuthEmailEvent'
+      bindings:
+        kafka:
+          key:
+            $ref: '../common/events.yaml#/LongKey'
+          bindingVersion: 0.5.0
+
     UserSnapshot:
       name: UserSnapshot
       title: User snapshot
@@ -55,6 +87,42 @@ components:
           bindingVersion: 0.5.0
 
   schemas:
+    AuthEmailEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - occurredAt
+        - userId
+        - to
+        - template
+        - variables
+      properties:
+        eventId:
+          $ref: '../common/events.yaml#/EventId'
+        occurredAt:
+          $ref: '../common/events.yaml#/OccurredAt'
+        userId:
+          $ref: '../common/schemas.yaml#/Id'
+        to:
+          $ref: '../common/schemas.yaml#/Email'
+        template:
+          type: string
+          enum:
+            - WELCOME
+            - ACCOUNT_BLOCKED
+            - ACCOUNT_UNBLOCKED
+          description: |
+            WELCOME: sent after registration.
+            ACCOUNT_BLOCKED: sent when an admin blocks the account.
+            ACCOUNT_UNBLOCKED: sent when an admin restores the account.
+        variables:
+          type: object
+          description: Template placeholder values, e.g. {"displayName":"Alex"}.
+          additionalProperties:
+            type: string
+            maxLength: 500
+
     UserSnapshot:
       type: object
       additionalProperties: false
