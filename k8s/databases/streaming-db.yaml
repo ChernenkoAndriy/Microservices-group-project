@@ -17,6 +17,8 @@ metadata:
     app: streaming-db
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: streaming-db

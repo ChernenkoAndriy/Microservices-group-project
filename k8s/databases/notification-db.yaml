@@ -17,6 +17,8 @@ metadata:
     app: notification-db
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: notification-db

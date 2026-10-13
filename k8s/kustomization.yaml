@@ -1,0 +1,21 @@
+# kubectl apply -k k8s   (create k8s/base/secret.yaml from secret.yaml.example first)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - base/configmap.yaml
+  - base/secret.yaml
+  - databases/auth-db.yaml
+  - databases/catalog-db.yaml
+  - databases/library-db.yaml
+  - databases/media-storage.yaml
+  - databases/notification-db.yaml
+  - databases/recommendation-db.yaml
+  - databases/streaming-db.yaml
+  - messaging/kafka.yaml
+  - services/auth-service.yaml
+  - services/catalog-service.yaml
+  - services/streaming-service.yaml
+  - services/recommendation-service.yaml
+  - services/notification-service.yaml
+  - services/library-service.yaml
+  - services/api-gateway.yaml

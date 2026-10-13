@@ -170,6 +170,8 @@ services:
       - spotty-network
 
   auth-service:
+    # Same tag as in k8s/services, so one "docker compose build" also feeds a local Kubernetes cluster.
+    image: auth-service:latest
     build:
       context: ./auth-service
       dockerfile: Dockerfile
@@ -191,6 +193,7 @@ services:
       - spotty-network
 
   catalog-service:
+    image: catalog-service:latest
     build:
       context: ./track-service
       dockerfile: Dockerfile
@@ -216,6 +219,7 @@ services:
       - spotty-network
 
   streaming-service:
+    image: streaming-service:latest
     build:
       context: ./streaming-service
       dockerfile: Dockerfile
@@ -244,6 +248,7 @@ services:
       - spotty-network
 
   recommendation-service:
+    image: recommendation-service:latest
     build:
       context: ./recommendation-service
       dockerfile: Dockerfile
@@ -264,6 +269,7 @@ services:
       - spotty-network
 
   notification-service:
+    image: notification-service:latest
     build:
       context: ./notification-service
       dockerfile: Dockerfile
@@ -284,6 +290,7 @@ services:
       - spotty-network
 
   library-service:
+    image: library-service:latest
     build:
       context: ./library-service
       dockerfile: Dockerfile
@@ -304,6 +311,7 @@ services:
       - spotty-network
 
   api-gateway:
+    image: api-gateway:latest
     build:
       context: ./api-gateway
       dockerfile: Dockerfile

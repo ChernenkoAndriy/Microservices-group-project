@@ -17,6 +17,8 @@ metadata:
     app: media-storage
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: media-storage

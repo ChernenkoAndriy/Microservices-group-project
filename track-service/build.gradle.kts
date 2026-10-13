@@ -40,6 +40,7 @@ dependencies {
     implementation("io.github.resilience4j:resilience4j-bulkhead:$resilience4jVersion")
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
     testImplementation("org.wiremock:wiremock-standalone:3.13.2")
