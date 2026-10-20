@@ -20,3 +20,4 @@ resources:
   - services/library-service.yaml
   - services/api-gateway.yaml
   - monitoring/prometheus.yaml
+  - monitoring/alertmanager.yaml

@@ -95,7 +95,33 @@ metadata:
     app: prometheus
 data:
   alerts.yml: |
-    groups: []
+    groups:
+      - name: spotty-services
+        rules:
+          # A service scaled to 0 has no targets at all (no up == 0 series), so compare with the
+          # services seen in the last hour: alert when one of them has no UP replica left.
+          - alert: ServiceDown
+            expr: |
+              count by (application) (max_over_time(up{job="spotty-services"}[1h]))
+                unless
+              count by (application) (up{job="spotty-services"} == 1)
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "{{ $labels.application }} is down"
+              description: "No replica of {{ $labels.application }} has been scraped successfully for 1 minute."
+
+          # Every streaming-service replica reports the same outbox table, hence max.
+          - alert: OutboxBacklog
+            expr: max(spotty_outbox_pending_events) > 0
+            for: 2m
+            labels:
+              severity: warning
+              application: streaming-service
+            annotations:
+              summary: "Outbox events are not reaching Kafka"
+              description: "{{ $value }} outbox events have been waiting for more than 2 minutes. Is Kafka down?"
 ---
 apiVersion: apps/v1
 kind: Deployment
