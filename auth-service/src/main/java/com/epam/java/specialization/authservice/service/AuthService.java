@@ -11,6 +11,7 @@ import com.epam.java.specialization.authservice.exception.UserAlreadyExistsExcep
 import com.epam.java.specialization.authservice.jwt.JwtService;
 import com.epam.java.specialization.authservice.jwt.RefreshTokenService;
 import com.epam.java.specialization.authservice.mapper.UserMapper;
+import com.epam.java.specialization.authservice.metrics.AuthMetrics;
 import com.epam.java.specialization.authservice.model.User;
 import com.epam.java.specialization.authservice.model.UserStatus;
 import com.epam.java.specialization.authservice.repository.UserRepository;
@@ -30,6 +31,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
+    private final AuthMetrics authMetrics;
 
     @Transactional
     public UserProfileDto register(RegisterRequestDto request) {
@@ -59,11 +61,17 @@ public class AuthService {
         log.debug("Login attempt for email={}", request.getEmail());
         User user = userRepository.findByEmail(request.getEmail())
                 .filter(u -> passwordEncoder.matches(request.getPassword(), u.getPasswordHash()))
-                .orElseThrow(InvalidCredentialsException::new);
+                .orElse(null);
+        if (user == null) {
+            authMetrics.loginRejectedInvalidCredentials();
+            throw new InvalidCredentialsException();
+        }
         if (user.isBlocked()) {
+            authMetrics.loginRejectedBlocked();
             throw new AccountBlockedException();
         }
 
+        authMetrics.loginSucceeded();
         log.debug("Login succeeded for user id={}", user.getId());
         return issueTokens(user);
     }

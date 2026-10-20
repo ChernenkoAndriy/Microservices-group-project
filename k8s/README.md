@@ -42,3 +42,5 @@ Remove everything, data included: `kubectl delete -k k8s`.
 Custom metrics of streaming-service: `spotty_outbox_pending_events` (Gauge), `spotty_transcoding_active_seconds`
 (LongTaskTimer; set `TRANSCODING_SIMULATED_DELAY_MS`, e.g. 15000, to see a transcoding in progress) and
 `spotty_upload_master_size_bytes` (DistributionSummary).
+auth-service: `spotty_auth_logins_total{outcome="success|invalid_credentials|blocked"}` (Counter).
+recommendation-service: `spotty_analytics_event_save_seconds` (Timer, ClickHouse write of a play event).
