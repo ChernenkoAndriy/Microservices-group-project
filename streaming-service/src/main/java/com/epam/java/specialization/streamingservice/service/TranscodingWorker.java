@@ -1,8 +1,10 @@
 package com.epam.java.specialization.streamingservice.service;
 
+import com.epam.java.specialization.streamingservice.metrics.StreamingMetrics;
 import com.epam.java.specialization.streamingservice.model.TranscodingJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -22,10 +24,16 @@ public class TranscodingWorker {
 
     private final TranscodingService transcodingService;
     private final StreamingStorageService storageService;
+    private final StreamingMetrics metrics;
+    private final long simulatedDelayMs;
 
-    public TranscodingWorker(TranscodingService transcodingService, StreamingStorageService storageService) {
+    public TranscodingWorker(TranscodingService transcodingService, StreamingStorageService storageService,
+                             StreamingMetrics metrics,
+                             @Value("${transcoding.worker.simulated-delay-ms:0}") long simulatedDelayMs) {
         this.transcodingService = transcodingService;
         this.storageService = storageService;
+        this.metrics = metrics;
+        this.simulatedDelayMs = simulatedDelayMs;
     }
 
     @Scheduled(fixedDelayString = "${transcoding.worker.poll-interval-ms:2000}")
@@ -34,13 +42,25 @@ public class TranscodingWorker {
         if (job == null) {
             return;
         }
+        metrics.recordTranscoding(() -> transcode(job));
+    }
+
+    private void transcode(TranscodingJob job) {
         String key = StreamingStorageService.masterKey(job.getTrackId());
         try {
+            simulateWork();
             long sizeBytes = storageService.objectSize(key);
             transcodingService.complete(job.getId(), estimateDurationSeconds(sizeBytes), storageService.storageUrl(key));
         } catch (Exception e) {
             log.warn("Could not transcode track id={}", job.getTrackId(), e);
             transcodingService.fail(job.getId(), e.getMessage());
+        }
+    }
+
+    /** Stands in for real transcoding time, so the active-transcoding metric can be observed. */
+    private void simulateWork() throws InterruptedException {
+        if (simulatedDelayMs > 0) {
+            Thread.sleep(simulatedDelayMs);
         }
     }
 

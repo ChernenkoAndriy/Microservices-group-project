@@ -156,6 +156,7 @@ gateway:
           - /api/v1/streaming/{trackId}
           - /actuator/health/**
           - /actuator/info
+          - /actuator/prometheus
 
   # Requests per client (user id, or IP when anonymous). Over the limit: 429 with Retry-After.
   rate-limit:
@@ -167,7 +168,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
