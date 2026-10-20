@@ -4,6 +4,7 @@ import com.epam.java.specialization.streamingservice.api.MediaUploadApi;
 import com.epam.java.specialization.streamingservice.api.dto.AudioQualityDto;
 import com.epam.java.specialization.streamingservice.api.dto.TranscodingJobStatusDto;
 import com.epam.java.specialization.streamingservice.api.dto.TranscodingStatusDto;
+import com.epam.java.specialization.streamingservice.metrics.StreamingMetrics;
 import com.epam.java.specialization.streamingservice.model.TranscodingJob;
 import com.epam.java.specialization.streamingservice.service.StreamingStorageService;
 import com.epam.java.specialization.streamingservice.service.TranscodingService;
@@ -25,10 +26,13 @@ public class MediaController implements MediaUploadApi {
 
     private final StreamingStorageService storageService;
     private final TranscodingService transcodingService;
+    private final StreamingMetrics metrics;
 
-    public MediaController(StreamingStorageService storageService, TranscodingService transcodingService) {
+    public MediaController(StreamingStorageService storageService, TranscodingService transcodingService,
+                           StreamingMetrics metrics) {
         this.storageService = storageService;
         this.transcodingService = transcodingService;
+        this.metrics = metrics;
     }
 
     @Override
@@ -38,6 +42,7 @@ public class MediaController implements MediaUploadApi {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store the master file", e);
         }
+        metrics.recordUploadedMaster(file.getSize());
         TranscodingJob job = transcodingService.queue(trackId, file.getOriginalFilename(), file.getSize());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(toDto(job));
     }

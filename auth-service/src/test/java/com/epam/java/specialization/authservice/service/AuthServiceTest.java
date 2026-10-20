@@ -3,6 +3,8 @@ package com.epam.java.specialization.authservice.service;
 import org.mockito.Spy;
 import org.mapstruct.factory.Mappers;
 import com.epam.java.specialization.authservice.mapper.UserMapper;
+import com.epam.java.specialization.authservice.metrics.AuthMetrics;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.epam.java.specialization.authservice.api.dto.LoginRequestDto;
 import com.epam.java.specialization.authservice.api.dto.RegisterRequestDto;
 import com.epam.java.specialization.authservice.api.dto.RegistrationRoleDto;
@@ -55,6 +57,10 @@ class AuthServiceTest {
 
     @Spy
     private UserMapper userMapper = Mappers.getMapper(UserMapper.class);
+
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+    @Spy
+    private AuthMetrics authMetrics = new AuthMetrics(meterRegistry);
 
     @InjectMocks
     private AuthService authService;
@@ -123,6 +129,7 @@ class AuthServiceTest {
             TokenResponseDto response = authService.login(request);
 
             assertThat(response).isEqualTo(new TokenResponseDto("access", TokenResponseDto.TokenTypeEnum.BEARER, 600, "refresh", 2_592_000));
+            assertThat(logins("success")).isEqualTo(1);
         }
 
         @Test
@@ -131,6 +138,7 @@ class AuthServiceTest {
 
             assertThatThrownBy(() -> authService.login(request)).isInstanceOf(InvalidCredentialsException.class);
             verifyNoInteractions(jwtService, refreshTokenService);
+            assertThat(logins("invalid_credentials")).isEqualTo(1);
         }
 
         @Test
@@ -150,6 +158,12 @@ class AuthServiceTest {
 
             assertThatThrownBy(() -> authService.login(request)).isInstanceOf(AccountBlockedException.class);
             verifyNoInteractions(jwtService, refreshTokenService);
+            assertThat(logins("blocked")).isEqualTo(1);
+            assertThat(logins("success")).isZero();
+        }
+
+        private double logins(String outcome) {
+            return meterRegistry.get(AuthMetrics.LOGINS).tag("outcome", outcome).counter().count();
         }
     }
 

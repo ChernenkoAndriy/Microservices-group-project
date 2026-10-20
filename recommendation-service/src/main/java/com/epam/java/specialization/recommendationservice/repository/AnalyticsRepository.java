@@ -1,5 +1,6 @@
 package com.epam.java.specialization.recommendationservice.repository;
 
+import com.epam.java.specialization.recommendationservice.metrics.RecommendationMetrics;
 import com.epam.java.specialization.recommendationservice.model.ListenEvent;
 import jakarta.annotation.PostConstruct;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -13,9 +14,11 @@ import java.util.List;
 public class AnalyticsRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final RecommendationMetrics metrics;
 
-    public AnalyticsRepository(JdbcTemplate jdbcTemplate) {
+    public AnalyticsRepository(JdbcTemplate jdbcTemplate, RecommendationMetrics metrics) {
         this.jdbcTemplate = jdbcTemplate;
+        this.metrics = metrics;
     }
 
     @PostConstruct
@@ -35,7 +38,8 @@ public class AnalyticsRepository {
     public void saveEvent(ListenEvent event) {
         String sql = "INSERT INTO user_listen_events (user_id, track_id, listen_duration_seconds, event_time) VALUES (?, ?, ?, ?)";
         LocalDateTime eventTime = event.getEventTime() != null ? event.getEventTime() : LocalDateTime.now();
-        jdbcTemplate.update(sql, event.getUserId(), event.getTrackId(), event.getListenDurationSeconds(), Timestamp.valueOf(eventTime));
+        metrics.recordEventSave(() -> jdbcTemplate.update(sql, event.getUserId(), event.getTrackId(),
+                event.getListenDurationSeconds(), Timestamp.valueOf(eventTime)));
     }
 
     public List<ListenEvent> getEventsByUser(String userId) {
