@@ -1,0 +1,9 @@
+# Tracing and logs: OpenTelemetry Collectors, Tempo, Loki, Grafana. Pulled in by k8s-local.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - otel-collector.yaml
+  - otel-collector-logs.yaml
+  - tempo.yaml
+  - loki.yaml
+  - grafana.yaml

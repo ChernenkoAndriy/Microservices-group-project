@@ -1,0 +1,164 @@
+# OpenTelemetry Collector for logs, one pod per node (DaemonSet). It reads the container log files of this
+# namespace from /var/log/pods, parses the JSON lines the services write, takes traceId/spanId from them as
+# the record's trace context and sends the records to Loki over OTLP. Loki keeps trace_id and span_id as
+# structured metadata, which Grafana uses to go from a span to its logs.
+#
+# Expected log line of a service (Spring Boot structured logging, logstash or ecs format):
+#   {"@timestamp":"...","level":"INFO","message":"...","traceId":"4bf92f35...","spanId":"00f067aa...",...}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-logs-config
+  labels:
+    app: otel-collector-logs
+data:
+  config.yaml: |
+    extensions:
+      health_check:
+        endpoint: 0.0.0.0:13133
+      # Remembers the read offset of every file, so a restarted pod does not send the logs again.
+      file_storage:
+        directory: /var/lib/otelcol-logs
+        create_directory: true
+
+    receivers:
+      filelog:
+        include:
+          - /var/log/pods/default_*/*/*.log
+        exclude:
+          # The observability stack itself
+          - /var/log/pods/default_otel-collector*/*/*.log
+          - /var/log/pods/default_loki-*/*/*.log
+          - /var/log/pods/default_tempo-*/*/*.log
+          - /var/log/pods/default_grafana-*/*/*.log
+        start_at: end
+        include_file_path: true
+        storage: file_storage
+        operators:
+          # CRI / docker line format -> body; namespace, pod and container name from the file path
+          - type: container
+            id: container-parser
+            add_metadata_from_filepath: true
+
+          - type: json_parser
+            id: app-json
+            if: 'body matches "^\\s*\\{"'
+            parse_from: body
+            parse_to: attributes
+            on_error: send_quiet
+
+          - type: trace_parser
+            if: 'attributes.traceId != nil and attributes.traceId != ""'
+            trace_id:
+              parse_from: attributes.traceId
+            span_id:
+              parse_from: attributes.spanId
+            on_error: send_quiet
+
+          # logstash format: "level", ecs format: "log.level"
+          - type: severity_parser
+            if: 'attributes.level != nil'
+            parse_from: attributes.level
+            on_error: send_quiet
+          - type: severity_parser
+            if: 'attributes["log.level"] != nil'
+            parse_from: attributes["log.level"]
+            on_error: send_quiet
+
+          - type: move
+            if: 'attributes.message != nil'
+            from: attributes.message
+            to: body
+
+          # Loki turns service.name into the service_name label
+          - type: copy
+            from: resource["k8s.container.name"]
+            to: resource["service.name"]
+
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      batch:
+        send_batch_size: 1024
+        timeout: 2s
+
+    exporters:
+      otlphttp/loki:
+        endpoint: http://loki:3100/otlp
+        tls:
+          insecure: true
+
+    service:
+      extensions: [health_check, file_storage]
+      pipelines:
+        logs:
+          receivers: [filelog]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp/loki]
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector-logs
+  labels:
+    app: otel-collector-logs
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector-logs
+  template:
+    metadata:
+      labels:
+        app: otel-collector-logs
+    spec:
+      containers:
+        - name: otel-collector-logs
+          image: otel/opentelemetry-collector-contrib:0.135.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config=/etc/otelcol/config.yaml
+          # The log files on the node belong to root
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          ports:
+            - containerPort: 13133
+              name: health
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: state
+              mountPath: /var/lib/otelcol-logs
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            periodSeconds: 15
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-logs-config
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: state
+          hostPath:
+            path: /var/lib/otelcol-logs
+            type: DirectoryOrCreate
