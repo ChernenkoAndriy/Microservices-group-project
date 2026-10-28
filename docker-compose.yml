@@ -184,10 +184,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD}
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       SERVER_PORT: 8081
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "${AUTH_SERVICE_PORT:-8081}:8081"
     depends_on:
       auth-db:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - spotty-network
@@ -283,10 +286,13 @@ services:
       SPRING_DATASOURCE_USERNAME: ${NOTIFICATION_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
       SERVER_PORT: 8085
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     ports:
       - "${NOTIFICATION_SERVICE_PORT:-8085}:8085"
     depends_on:
       notification-db:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - spotty-network

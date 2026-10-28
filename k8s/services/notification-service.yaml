@@ -46,6 +46,11 @@ spec:
                 secretKeyRef:
                   name: spotty-secrets
                   key: NOTIFICATION_DB_PASSWORD
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
             # Tracing: spans go to the OpenTelemetry Collector over OTLP/HTTP; the pod, namespace and node
             # become resource attributes of every span (Downward API).
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

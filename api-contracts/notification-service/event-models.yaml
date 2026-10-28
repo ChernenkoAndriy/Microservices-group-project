@@ -8,6 +8,8 @@ info:
 paths: {}
 components:
   schemas:
+    AuthEmailEvent:
+      $ref: '../auth-service/asyncapi.yaml#/components/schemas/AuthEmailEvent'
     TrackPublishedEvent:
       $ref: '../catalog-service/asyncapi.yaml#/components/schemas/TrackPublishedEvent'
     ArtistFollowChange:

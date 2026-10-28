@@ -19,6 +19,7 @@ import com.epam.java.specialization.authservice.jwt.RefreshTokenService;
 import com.epam.java.specialization.authservice.model.Role;
 import com.epam.java.specialization.authservice.model.User;
 import com.epam.java.specialization.authservice.model.UserStatus;
+import com.epam.java.specialization.authservice.outbox.OutboxService;
 import com.epam.java.specialization.authservice.repository.UserRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,8 @@ class UserServiceTest {
     private UserRepository userRepository;
     @Mock
     private RefreshTokenService refreshTokenService;
+    @Mock
+    private OutboxService outboxService;
 
     @Spy
     private UserMapper userMapper = Mappers.getMapper(UserMapper.class);

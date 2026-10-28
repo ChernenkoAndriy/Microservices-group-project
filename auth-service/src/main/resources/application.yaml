@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: authentication-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
   jpa:
     hibernate:
       ddl-auto: update
@@ -15,6 +21,9 @@ spring:
     default-property-inclusion: non_null
     deserialization:
       fail-on-unknown-properties: true
+
+outbox:
+  poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:5000}
 
 internal-api:
   token: ${INTERNAL_API_TOKEN:dev-internal-token}
