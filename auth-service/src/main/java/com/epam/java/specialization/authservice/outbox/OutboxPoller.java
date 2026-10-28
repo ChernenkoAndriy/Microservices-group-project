@@ -32,18 +32,22 @@ public class OutboxPoller {
         Span span = traceContext.startSpan("outbox send", event.getTraceparent())
                 .tag("outbox.event.id", event.getId().toString())
                 .tag("messaging.destination.name", event.getTopic());
+        // The scope encloses the catch block too (a try-with-resources resource is closed before its catch runs),
+        // so the failure log line carries the traceId and shows up under "Logs for this span".
         try (Tracer.SpanInScope scope = traceContext.tracer().withSpan(span)) {
-            kafkaTemplate.send(event.getTopic(), event.getMessageKey(), event.getPayload())
-                    .get(10, TimeUnit.SECONDS);
-            event.markPublished(clock.instant());
-            repository.save(event);
-            log.debug("Published outbox event id={} topic={}", event.getId(), event.getTopic());
-        } catch (Exception e) {
-            if (e instanceof InterruptedException) {
-                Thread.currentThread().interrupt();
+            try {
+                kafkaTemplate.send(event.getTopic(), event.getMessageKey(), event.getPayload())
+                        .get(10, TimeUnit.SECONDS);
+                event.markPublished(clock.instant());
+                repository.save(event);
+                log.debug("Published outbox event id={} topic={}", event.getId(), event.getTopic());
+            } catch (Exception e) {
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                span.error(e);
+                log.warn("Failed to publish outbox event id={} topic={}", event.getId(), event.getTopic(), e);
             }
-            span.error(e);
-            log.warn("Failed to publish outbox event id={} topic={}", event.getId(), event.getTopic(), e);
         } finally {
             span.end();
         }

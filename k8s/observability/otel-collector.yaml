@@ -26,7 +26,6 @@ data:
         limit_percentage: 80
         spike_limit_percentage: 25
 
-      # Prometheus scrapes /actuator/prometheus every 15 s; those traces are noise, drop them before sampling.
       filter/actuator:
         error_mode: ignore
         traces:
@@ -36,9 +35,6 @@ data:
             - 'IsMatch(attributes["http.route"], "^/actuator")'
             - 'IsMatch(attributes["url.path"], "^/actuator")'
 
-      # A trace is kept when ANY policy matches. Spans are held for decision_wait after the first span of
-      # the trace arrives; spans of a trace already decided (e.g. a Kafka consumer that runs later) follow
-      # the decision kept in decision_cache.
       tail_sampling:
         decision_wait: 10s
         num_traces: 20000

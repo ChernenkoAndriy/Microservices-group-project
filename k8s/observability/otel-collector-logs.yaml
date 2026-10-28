@@ -16,7 +16,6 @@ data:
     extensions:
       health_check:
         endpoint: 0.0.0.0:13133
-      # Remembers the read offset of every file, so a restarted pod does not send the logs again.
       file_storage:
         directory: /var/lib/otelcol-logs
         create_directory: true
@@ -26,7 +25,6 @@ data:
         include:
           - /var/log/pods/default_*/*/*.log
         exclude:
-          # The observability stack itself
           - /var/log/pods/default_otel-collector*/*/*.log
           - /var/log/pods/default_loki-*/*/*.log
           - /var/log/pods/default_tempo-*/*/*.log

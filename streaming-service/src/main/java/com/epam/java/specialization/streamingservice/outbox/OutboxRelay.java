@@ -69,24 +69,28 @@ public class OutboxRelay {
                 .tag("outbox.event.id", event.getId().toString())
                 .tag("outbox.event.type", event.getEventType())
                 .tag("messaging.destination.name", event.getTopic());
+        // The scope encloses the catch blocks too (a try-with-resources resource is closed before its catch runs),
+        // so the failure log line carries the traceId and shows up under "Logs for this span".
         try (Tracer.SpanInScope scope = traceContext.tracer().withSpan(span)) {
-            kafkaTemplate.send(toRecord(event)).get(sendTimeoutMs, TimeUnit.MILLISECONDS);
-            event.markSent(Instant.now());
-            log.info("Sent outbox event id={} type={} topic={} key={}",
-                    event.getId(), event.getEventType(), event.getTopic(), event.getMessageKey());
-            return true;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            event.markFailedAttempt("Interrupted");
-            span.error(e);
-            return false;
-        } catch (ExecutionException | TimeoutException | RuntimeException e) {
-            Throwable cause = e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e;
-            event.markFailedAttempt(cause.toString());
-            span.error(cause);
-            log.warn("Could not send outbox event id={} (attempt {}), will retry: {}",
-                    event.getId(), event.getAttempts(), cause.toString());
-            return false;
+            try {
+                kafkaTemplate.send(toRecord(event)).get(sendTimeoutMs, TimeUnit.MILLISECONDS);
+                event.markSent(Instant.now());
+                log.info("Sent outbox event id={} type={} topic={} key={}",
+                        event.getId(), event.getEventType(), event.getTopic(), event.getMessageKey());
+                return true;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                event.markFailedAttempt("Interrupted");
+                span.error(e);
+                return false;
+            } catch (ExecutionException | TimeoutException | RuntimeException e) {
+                Throwable cause = e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e;
+                event.markFailedAttempt(cause.toString());
+                span.error(cause);
+                log.warn("Could not send outbox event id={} (attempt {}), will retry: {}",
+                        event.getId(), event.getAttempts(), cause.toString());
+                return false;
+            }
         } finally {
             span.end();
         }
