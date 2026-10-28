@@ -2,3 +2,5 @@
 .env
 **/secret.yaml
 **/secret.yml
+bruno/
+k8s-local/
