@@ -234,6 +234,8 @@ services:
       SPRING_DATASOURCE_USERNAME: ${STREAMING_DB_USER:-spotty_streaming_user}
       SPRING_DATASOURCE_PASSWORD: ${STREAMING_DB_PASSWORD:-your_secure_streaming_password}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CATALOG_SERVICE_URL: http://catalog-service:8082
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       SERVER_PORT: 8083
     ports:
       - "${STREAMING_SERVICE_PORT:-8083}:8083"

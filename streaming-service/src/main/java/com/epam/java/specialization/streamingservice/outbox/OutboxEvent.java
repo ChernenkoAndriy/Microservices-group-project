@@ -49,11 +49,15 @@ public class OutboxEvent {
     @Column(length = 500)
     private String lastError;
 
+    /** W3C {@code traceparent} of the change, so the Kafka record continues its trace. */
+    @Column(length = 64)
+    private String traceparent;
+
     protected OutboxEvent() {
     }
 
     public OutboxEvent(UUID id, String aggregateType, String aggregateId, String topic, String messageKey,
-                       String eventType, String payload, Instant createdAt) {
+                       String eventType, String payload, Instant createdAt, String traceparent) {
         this.id = id;
         this.aggregateType = aggregateType;
         this.aggregateId = aggregateId;
@@ -62,6 +66,7 @@ public class OutboxEvent {
         this.eventType = eventType;
         this.payload = payload;
         this.createdAt = createdAt;
+        this.traceparent = traceparent;
     }
 
     public void markSent(Instant at) {
@@ -86,4 +91,5 @@ public class OutboxEvent {
     public Instant getSentAt() { return sentAt; }
     public int getAttempts() { return attempts; }
     public String getLastError() { return lastError; }
+    public String getTraceparent() { return traceparent; }
 }

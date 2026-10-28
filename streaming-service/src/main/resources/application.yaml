@@ -25,6 +25,9 @@ spring:
     open-in-view: false
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    # PRODUCER span per record and traceparent in its headers (W3C Trace Context over Kafka).
+    template:
+      observation-enabled: true
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -55,6 +58,13 @@ transcoding:
     # Pretend transcoding takes this long, to see spotty_transcoding_active_seconds in Prometheus.
     simulated-delay-ms: ${TRANSCODING_SIMULATED_DELAY_MS:0}
 
+# GET /internal/tracks/{trackId} before an upload: the track exists and belongs to the caller.
+catalog-client:
+  base-url: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
+  internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
+  connect-timeout: 1s
+  read-timeout: 2s
+
 storage:
   s3:
     endpoint: ${S3_ENDPOINT:http://media-storage:9000}
@@ -72,3 +82,20 @@ management:
       probes:
         enabled: true
       show-details: always
+  # Every trace is recorded; the OpenTelemetry Collector keeps errors and slow traces (tail sampling).
+  # Spans are exported only when MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT is set (k8s manifests).
+  tracing:
+    sampling:
+      probability: 1.0
+  # Metrics stay with Prometheus (scraped from /actuator/prometheus); the OpenTelemetry starter would also push them.
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  observations:
+    annotations:
+      enabled: true
+    # The worker and the relay poll every 1-2 s; a trace per empty poll is noise. Their real work
+    # continues the trace stored with the job and the outbox row (TraceContextCarrier).
+    enable:
+      tasks.scheduled: false

@@ -53,6 +53,10 @@ public class TranscodingJob {
     @Column(length = 500)
     private String failureReason;
 
+    /** W3C {@code traceparent} of the upload, so the worker continues the upload's trace. */
+    @Column(length = 64)
+    private String traceparent;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -77,6 +81,10 @@ public class TranscodingJob {
         this.failureReason = null;
         this.masterFileName = masterFileName;
         this.masterSizeBytes = masterSizeBytes;
+    }
+
+    public void rememberTrace(String traceparent) {
+        this.traceparent = traceparent;
     }
 
     public void startProcessing() {
@@ -112,6 +120,7 @@ public class TranscodingJob {
     public String getMasterFileName() { return masterFileName; }
     public Long getMasterSizeBytes() { return masterSizeBytes; }
     public String getFailureReason() { return failureReason; }
+    public String getTraceparent() { return traceparent; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

@@ -1,0 +1,6 @@
+[FIRING] ServiceDown library-service: library-service is down
+[RESOLVED] ServiceDown library-service: library-service is down
+[FIRING] OutboxBacklog streaming-service: Outbox events are not reaching Kafka
+[RESOLVED] OutboxBacklog streaming-service: Outbox events are not reaching Kafka
+[FIRING] ServiceDown library-service: library-service is down
+[RESOLVED] ServiceDown library-service: library-service is down

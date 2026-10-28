@@ -4,10 +4,12 @@ import com.epam.java.specialization.streamingservice.api.MediaUploadApi;
 import com.epam.java.specialization.streamingservice.api.dto.AudioQualityDto;
 import com.epam.java.specialization.streamingservice.api.dto.TranscodingJobStatusDto;
 import com.epam.java.specialization.streamingservice.api.dto.TranscodingStatusDto;
+import com.epam.java.specialization.streamingservice.client.TrackOwnership;
 import com.epam.java.specialization.streamingservice.metrics.StreamingMetrics;
 import com.epam.java.specialization.streamingservice.model.TranscodingJob;
 import com.epam.java.specialization.streamingservice.service.StreamingStorageService;
 import com.epam.java.specialization.streamingservice.service.TranscodingService;
+import com.epam.java.specialization.streamingservice.web.CurrentUser;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,16 +29,21 @@ public class MediaController implements MediaUploadApi {
     private final StreamingStorageService storageService;
     private final TranscodingService transcodingService;
     private final StreamingMetrics metrics;
+    private final CurrentUser currentUser;
+    private final TrackOwnership trackOwnership;
 
     public MediaController(StreamingStorageService storageService, TranscodingService transcodingService,
-                           StreamingMetrics metrics) {
+                           StreamingMetrics metrics, CurrentUser currentUser, TrackOwnership trackOwnership) {
         this.storageService = storageService;
         this.transcodingService = transcodingService;
         this.metrics = metrics;
+        this.currentUser = currentUser;
+        this.trackOwnership = trackOwnership;
     }
 
     @Override
     public ResponseEntity<TranscodingStatusDto> uploadMaster(Long trackId, MultipartFile file) {
+        trackOwnership.requireOwner(trackId, currentUser.requireId());
         try {
             storageService.uploadAudio(StreamingStorageService.masterKey(trackId), file);
         } catch (Exception e) {

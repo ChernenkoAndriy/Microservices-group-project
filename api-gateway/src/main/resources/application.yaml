@@ -126,7 +126,7 @@ resilience4j:
 
 logging:
   pattern:
-    correlation: "[%X{correlationId:-}] "
+    correlation: "[%X{correlationId:-}] [%X{traceId:-},%X{spanId:-}] "
 
 jwt:
   # Must be the same Base64-encoded HMAC key auth-service signs tokens with (same env var as auth-service).
@@ -174,3 +174,16 @@ management:
       probes:
         enabled: true
       show-details: always
+  # Every trace is recorded; the OpenTelemetry Collector keeps errors and slow traces (tail sampling).
+  # Spans are exported only when MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT is set (k8s manifests).
+  tracing:
+    sampling:
+      probability: 1.0
+  # Metrics stay with Prometheus (scraped from /actuator/prometheus); the OpenTelemetry starter would also push them.
+  otlp:
+    metrics:
+      export:
+        enabled: false
+  observations:
+    annotations:
+      enabled: true
