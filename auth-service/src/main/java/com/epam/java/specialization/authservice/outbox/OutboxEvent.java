@@ -35,13 +35,18 @@ public class OutboxEvent {
 
     private Instant publishedAt;
 
-    static OutboxEvent pending(UUID id, String topic, String messageKey, String payload, Instant createdAt) {
+    @Column(length = 64)
+    private String traceparent;
+
+    static OutboxEvent pending(UUID id, String topic, String messageKey, String payload, Instant createdAt,
+                               String traceparent) {
         OutboxEvent event = new OutboxEvent();
         event.id = id;
         event.topic = topic;
         event.messageKey = messageKey;
         event.payload = payload;
         event.createdAt = createdAt;
+        event.traceparent = traceparent;
         return event;
     }
 

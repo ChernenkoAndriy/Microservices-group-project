@@ -1,5 +1,6 @@
 package com.epam.java.specialization.authservice.outbox;
 
+import com.epam.java.specialization.authservice.tracing.TraceContextCarrier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -17,6 +18,7 @@ public class OutboxService {
     private final OutboxEventRepository repository;
     private final JsonMapper jsonMapper;
     private final Clock clock;
+    private final TraceContextCarrier traceContext;
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void save(String topic, String messageKey, Object payload) {
@@ -26,6 +28,7 @@ public class OutboxService {
         } catch (JacksonException e) {
             throw new IllegalStateException("Cannot serialize outbox payload for topic " + topic, e);
         }
-        repository.save(OutboxEvent.pending(UUID.randomUUID(), topic, messageKey, json, clock.instant()));
+        repository.save(OutboxEvent.pending(UUID.randomUUID(), topic, messageKey, json, clock.instant(),
+                traceContext.currentTraceparent()));
     }
 }

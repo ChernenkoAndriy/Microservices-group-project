@@ -10,6 +10,8 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
+    template:
+      observation-enabled: true
   jpa:
     hibernate:
       ddl-auto: update
@@ -65,3 +67,5 @@ management:
   observations:
     annotations:
       enabled: true
+    enable:
+      tasks.scheduled: false

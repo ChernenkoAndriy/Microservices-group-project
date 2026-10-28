@@ -1,5 +1,8 @@
 package com.epam.java.specialization.authservice.outbox;
 
+import com.epam.java.specialization.authservice.tracing.TraceContextCarrier;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -17,6 +20,7 @@ public class OutboxPoller {
     private final OutboxEventRepository repository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final Clock clock;
+    private final TraceContextCarrier traceContext;
 
     @Scheduled(fixedDelayString = "${outbox.poll-interval-ms:5000}")
     public void poll() {
@@ -25,14 +29,23 @@ public class OutboxPoller {
     }
 
     private void publish(OutboxEvent event) {
-        try {
+        Span span = traceContext.startSpan("outbox send", event.getTraceparent())
+                .tag("outbox.event.id", event.getId().toString())
+                .tag("messaging.destination.name", event.getTopic());
+        try (Tracer.SpanInScope scope = traceContext.tracer().withSpan(span)) {
             kafkaTemplate.send(event.getTopic(), event.getMessageKey(), event.getPayload())
                     .get(10, TimeUnit.SECONDS);
             event.markPublished(clock.instant());
             repository.save(event);
             log.debug("Published outbox event id={} topic={}", event.getId(), event.getTopic());
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            span.error(e);
             log.warn("Failed to publish outbox event id={} topic={}", event.getId(), event.getTopic(), e);
+        } finally {
+            span.end();
         }
     }
 }
