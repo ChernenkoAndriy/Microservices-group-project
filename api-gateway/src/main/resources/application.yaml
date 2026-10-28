@@ -125,6 +125,11 @@ resilience4j:
         max-wait-duration: 0
 
 logging:
+  # One JSON object per line (logstash format) with the MDC values, so traceId and spanId are fields of every
+  # record; otel-collector-logs (k8s/observability) parses them and Grafana links a span to its logs in Loki.
+  structured:
+    format:
+      console: logstash
   pattern:
     correlation: "[%X{correlationId:-}] [%X{traceId:-},%X{spanId:-}] "
 
