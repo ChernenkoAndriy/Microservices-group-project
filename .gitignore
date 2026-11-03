@@ -4,3 +4,6 @@
 **/secret.yml
 bruno/
 k8s-local/
+*.log
+hs_err_pid*
+replay_pid*
