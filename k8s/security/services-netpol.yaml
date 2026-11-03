@@ -1,0 +1,54 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-business-services
+  labels:
+    app.kubernetes.io/part-of: spotty
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - auth-service
+          - catalog-service
+          - streaming-service
+          - recommendation-service
+          - notification-service
+          - library-service
+  policyTypes:
+    - Ingress
+  ingress:
+    # 1. Allow traffic strictly from API Gateway (app: api-gateway)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway
+    # 2. Allow Prometheus to scrape metrics (/actuator/prometheus)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+---
+# Allow specific inter-service HTTP communication:
+# streaming-service makes synchronous HTTP calls to catalog-service (GET /internal/tracks/{id})
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-streaming-to-catalog
+  labels:
+    app.kubernetes.io/part-of: spotty
+spec:
+  podSelector:
+    matchLabels:
+      app: catalog-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: streaming-service
+      ports:
+        - protocol: TCP
+          port: 8082

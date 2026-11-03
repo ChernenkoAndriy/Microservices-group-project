@@ -1,0 +1,13 @@
+# Default Deny: blocks all incoming (Ingress) traffic to any pod in this namespace.
+# Once this policy is applied, pods only accept traffic that is explicitly allowed
+# by other NetworkPolicy resources in the cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  labels:
+    app.kubernetes.io/part-of: spotty
+spec:
+  podSelector: {} # Selects all pods in the namespace
+  policyTypes:
+    - Ingress

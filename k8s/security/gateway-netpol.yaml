@@ -1,0 +1,29 @@
+# NetworkPolicy for API Gateway
+# The API Gateway is the public entrypoint to the microservices cluster.
+# It must accept HTTP traffic on port 8080 from outside (Ingress controller, NodePort, external clients)
+# and allow Prometheus metrics scraping on port 8080.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-api-gateway
+  labels:
+    app.kubernetes.io/part-of: spotty
+spec:
+  podSelector:
+    matchLabels:
+      app: api-gateway
+  policyTypes:
+    - Ingress
+  ingress:
+    # 1. Allow traffic to port 8080 from any source
+    - ports:
+        - protocol: TCP
+          port: 8080
+    # 2. Allow Prometheus to scrape metrics from actuator on port 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
