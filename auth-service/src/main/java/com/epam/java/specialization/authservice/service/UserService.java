@@ -4,6 +4,7 @@ import com.epam.java.specialization.authservice.api.dto.AdminUpdateUserRequestDt
 import com.epam.java.specialization.authservice.api.dto.UpdateProfileRequestDto;
 import com.epam.java.specialization.authservice.api.dto.UserPageDto;
 import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
+import com.epam.java.specialization.authservice.event.AuthEmailEvent;
 import com.epam.java.specialization.authservice.exception.BadRequestException;
 import com.epam.java.specialization.authservice.exception.EntityDoesNotExistException;
 import com.epam.java.specialization.authservice.exception.SelfModificationForbiddenException;
@@ -15,6 +16,7 @@ import com.epam.java.specialization.authservice.mapper.UserMapper;
 import com.epam.java.specialization.authservice.model.Role;
 import com.epam.java.specialization.authservice.model.User;
 import com.epam.java.specialization.authservice.model.UserStatus;
+import com.epam.java.specialization.authservice.outbox.OutboxService;
 import com.epam.java.specialization.authservice.repository.UserRepository;
 import com.epam.java.specialization.authservice.repository.UserSpecifications;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +28,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -38,6 +44,7 @@ public class UserService {
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
     private final InternalUserMapper internalUserMapper;
+    private final OutboxService outboxService;
 
     @Transactional(readOnly = true)
     public UserProfileDto getProfile(Long userId) {
@@ -94,6 +101,7 @@ public class UserService {
         if (role != null) {
             user.setRole(role);
         }
+        UserStatus previousStatus = user.getStatus();
         if (status != null) {
             if (status == UserStatus.BLOCKED && !user.isBlocked()) {
                 refreshTokenService.revokeAll(userId);
@@ -103,6 +111,15 @@ public class UserService {
 
         User saved = userRepository.saveAndFlush(user);
         log.debug("User id={} updated user id={}: role={} status={}", callerId, userId, saved.getRole(), saved.getStatus());
+
+        if (status == UserStatus.BLOCKED && previousStatus != UserStatus.BLOCKED) {
+            outboxService.save("auth.user.email", saved.getId().toString(),
+                    emailEvent(saved, AuthEmailEvent.TemplateEnum.ACCOUNT_BLOCKED));
+        } else if (status == UserStatus.ACTIVE && previousStatus == UserStatus.BLOCKED) {
+            outboxService.save("auth.user.email", saved.getId().toString(),
+                    emailEvent(saved, AuthEmailEvent.TemplateEnum.ACCOUNT_UNBLOCKED));
+        }
+
         return userMapper.toProfile(saved);
     }
 
@@ -111,6 +128,16 @@ public class UserService {
         return userRepository.findAllById(ids).stream()
                 .map(internalUserMapper::toSummary)
                 .toList();
+    }
+
+    private static AuthEmailEvent emailEvent(User user, AuthEmailEvent.TemplateEnum template) {
+        return new AuthEmailEvent()
+                .eventId(UUID.randomUUID())
+                .occurredAt(OffsetDateTime.now(ZoneOffset.UTC))
+                .userId(user.getId())
+                .to(user.getEmail())
+                .template(template)
+                .variables(Map.of("displayName", user.getUsername()));
     }
 
     private static boolean isHttpUrl(String value) {

@@ -16,6 +16,9 @@ servers:
     description: Kafka inside the compose network or the cluster
 
 channels:
+  userEmails:
+    $ref: '../auth-service/asyncapi.yaml#/channels/userEmails'
+
   trackPublished:
     $ref: '../catalog-service/asyncapi.yaml#/channels/trackPublished'
 
@@ -26,6 +29,20 @@ channels:
     $ref: '../auth-service/asyncapi.yaml#/channels/userSnapshots'
 
 operations:
+  receiveAuthEmail:
+    action: receive
+    channel:
+      $ref: '#/channels/userEmails'
+    summary: Renders the requested email template and delivers it to the user.
+    messages:
+      - $ref: '#/channels/userEmails/messages/AuthEmailEvent'
+    bindings:
+      kafka:
+        groupId:
+          type: string
+          enum: [notification-service]
+        bindingVersion: 0.5.0
+
   receiveTrackPublished:
     action: receive
     channel:

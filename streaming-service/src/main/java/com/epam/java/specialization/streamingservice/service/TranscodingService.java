@@ -6,6 +6,8 @@ import com.epam.java.specialization.streamingservice.event.StorageUrl;
 import com.epam.java.specialization.streamingservice.model.TranscodingJob;
 import com.epam.java.specialization.streamingservice.outbox.OutboxWriter;
 import com.epam.java.specialization.streamingservice.repository.TranscodingJobRepository;
+import com.epam.java.specialization.streamingservice.tracing.TraceContextCarrier;
+import io.micrometer.observation.annotation.Observed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,12 +32,15 @@ public class TranscodingService {
     private final TranscodingJobRepository jobRepository;
     private final OutboxWriter outboxWriter;
     private final String assetReadyTopic;
+    private final TraceContextCarrier traceContext;
 
     public TranscodingService(TranscodingJobRepository jobRepository, OutboxWriter outboxWriter,
-                              @Value("${events.topics.asset-ready}") String assetReadyTopic) {
+                              @Value("${events.topics.asset-ready}") String assetReadyTopic,
+                              TraceContextCarrier traceContext) {
         this.jobRepository = jobRepository;
         this.outboxWriter = outboxWriter;
         this.assetReadyTopic = assetReadyTopic;
+        this.traceContext = traceContext;
     }
 
     /** Queues the transcoding of a master that is already in storage. */
@@ -43,6 +48,7 @@ public class TranscodingService {
     public TranscodingJob queue(Long trackId, String masterFileName, long masterSizeBytes) {
         TranscodingJob job = jobRepository.findByTrackId(trackId).orElseGet(() -> new TranscodingJob(trackId));
         job.queue(masterFileName, masterSizeBytes);
+        job.rememberTrace(traceContext.currentTraceparent());
         TranscodingJob saved = jobRepository.saveAndFlush(job);
         log.info("Queued transcoding job id={} for track id={}", saved.getId(), trackId);
         return saved;
@@ -66,6 +72,7 @@ public class TranscodingService {
      * Marks the job ready and puts {@code AssetReadySnapshot} in the outbox. Both writes share one transaction,
      * so the job is never READY without its event, and there is never an event for a job that is not READY.
      */
+    @Observed(name = "spotty.transcoding.complete", contextualName = "complete-transcoding")
     @Transactional
     public void complete(Long jobId, int durationSeconds, String storageUrl) {
         TranscodingJob job = jobRepository.findById(jobId)

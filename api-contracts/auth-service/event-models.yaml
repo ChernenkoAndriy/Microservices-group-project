@@ -8,5 +8,7 @@ info:
 paths: {}
 components:
   schemas:
+    AuthEmailEvent:
+      $ref: './asyncapi.yaml#/components/schemas/AuthEmailEvent'
     UserSnapshot:
       $ref: './asyncapi.yaml#/components/schemas/UserSnapshot'

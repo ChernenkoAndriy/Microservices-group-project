@@ -3,6 +3,7 @@ package com.epam.java.specialization.trackservice.messaging;
 import com.epam.java.specialization.trackservice.event.AssetReadySnapshot;
 import com.epam.java.specialization.trackservice.exception.CatalogException;
 import com.epam.java.specialization.trackservice.service.TrackService;
+import io.micrometer.observation.annotation.Observed;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,7 @@ public class AssetReadyHandler {
     private final Clock clock;
 
     /** @return {@code false} when the event had already been applied and was skipped */
+    @Observed(name = "spotty.asset-ready.apply", contextualName = "apply-asset-ready")
     @Transactional
     public boolean handle(AssetReadySnapshot event, String topic) {
         if (processedEventRepository.existsById(event.getEventId())) {

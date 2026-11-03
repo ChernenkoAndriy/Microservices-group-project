@@ -4,6 +4,7 @@ import com.epam.java.specialization.authservice.api.dto.LoginRequestDto;
 import com.epam.java.specialization.authservice.api.dto.RegisterRequestDto;
 import com.epam.java.specialization.authservice.api.dto.TokenResponseDto;
 import com.epam.java.specialization.authservice.api.dto.UserProfileDto;
+import com.epam.java.specialization.authservice.event.AuthEmailEvent;
 import com.epam.java.specialization.authservice.exception.AccountBlockedException;
 import com.epam.java.specialization.authservice.exception.InvalidCredentialsException;
 import com.epam.java.specialization.authservice.exception.InvalidRefreshTokenException;
@@ -14,12 +15,18 @@ import com.epam.java.specialization.authservice.mapper.UserMapper;
 import com.epam.java.specialization.authservice.metrics.AuthMetrics;
 import com.epam.java.specialization.authservice.model.User;
 import com.epam.java.specialization.authservice.model.UserStatus;
+import com.epam.java.specialization.authservice.outbox.OutboxService;
 import com.epam.java.specialization.authservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -32,6 +39,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final UserMapper userMapper;
     private final AuthMetrics authMetrics;
+    private final OutboxService outboxService;
 
     @Transactional
     public UserProfileDto register(RegisterRequestDto request) {
@@ -53,6 +61,16 @@ public class AuthService {
 
         User saved = userRepository.save(user);
         log.debug("Registered user id={}", saved.getId());
+
+        outboxService.save("auth.user.email", saved.getId().toString(),
+                new AuthEmailEvent()
+                        .eventId(UUID.randomUUID())
+                        .occurredAt(OffsetDateTime.now(ZoneOffset.UTC))
+                        .userId(saved.getId())
+                        .to(saved.getEmail())
+                        .template(AuthEmailEvent.TemplateEnum.WELCOME)
+                        .variables(Map.of("displayName", saved.getUsername())));
+
         return userMapper.toProfile(saved);
     }
 

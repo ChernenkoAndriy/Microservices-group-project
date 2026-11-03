@@ -21,6 +21,8 @@ repositories {
 dependencies {
     implementation("org.springframework.cloud:spring-cloud-starter-gateway-server-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
+    implementation("org.springframework.boot:spring-boot-starter-aspectj")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
     implementation("io.github.resilience4j:resilience4j-bulkhead")
@@ -30,6 +32,7 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
