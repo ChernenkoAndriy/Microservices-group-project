@@ -24,6 +24,8 @@ spec:
         runAsUser: 10001
         runAsGroup: 10001
         fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: streaming-service
           securityContext:
@@ -136,8 +138,10 @@ spec:
             - name: tmp
               mountPath: /tmp
       volumes:
+        # Tomcat work files and multipart uploads (max 50MB per file).
         - name: tmp
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 256Mi
 ---
 apiVersion: v1
 kind: Service

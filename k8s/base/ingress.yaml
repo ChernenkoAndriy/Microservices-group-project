@@ -1,0 +1,23 @@
+# Public entry point: Ingress controller -> api-gateway. The gateway does authentication, rate limiting and routing.
+# minikube: `minikube addons enable ingress`; kind / Docker Desktop: install ingress-nginx (class "nginx").
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spotty
+  labels:
+    app.kubernetes.io/part-of: spotty
+  annotations:
+    # nginx accepts 1m bodies by default; track uploads go up to 50MB (spring.servlet.multipart.max-file-size).
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 8080

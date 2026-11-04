@@ -49,8 +49,23 @@ spec:
       # The image turns every KAFKA_* variable into a broker setting, so the KAFKA_SERVICE_* and KAFKA_PORT_*
       # variables Kubernetes injects for the "kafka" Service must stay out.
       enableServiceLinks: false
+      # uid/gid 1000 = appuser in the image. On start the image writes server.properties into /opt/kafka/config.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: kafka
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: apache/kafka:3.9.1
           ports:
             - containerPort: 9092
@@ -106,8 +121,24 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 15
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: config
+              mountPath: /opt/kafka/config
+            - name: logs
+              mountPath: /opt/kafka/logs
             - name: kafka-data
               mountPath: /var/lib/kafka/data
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: config
+          emptyDir:
+            sizeLimit: 16Mi
+        - name: logs
+          emptyDir:
+            sizeLimit: 256Mi
   volumeClaimTemplates:
     - metadata:
         name: kafka-data

@@ -142,8 +142,22 @@ spec:
         app: prometheus
     spec:
       serviceAccountName: prometheus
+      # The only pod that keeps its ServiceAccount token: pod discovery goes through the Kubernetes API.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: prometheus
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: prom/prometheus:v3.5.0
           imagePullPolicy: IfNotPresent
           args:

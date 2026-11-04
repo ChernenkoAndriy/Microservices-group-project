@@ -27,13 +27,31 @@ spec:
       labels:
         app: auth-db
     spec:
+      # uid/gid 70 = user postgres in the alpine image.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: postgres:17-alpine
           ports:
             - containerPort: 5432
               name: postgres
           env:
+            # A subdirectory of the volume: initdb running as non-root cannot chmod the volume root itself.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
             - name: POSTGRES_DB
               valueFrom:
                 configMapKeyRef:
@@ -75,9 +93,19 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run/postgresql
             - name: auth-db-storage
               mountPath: /var/lib/postgresql/data
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: run
+          emptyDir:
+            sizeLimit: 1Mi
         - name: auth-db-storage
           persistentVolumeClaim:
             claimName: auth-db-pvc

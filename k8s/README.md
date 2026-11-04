@@ -80,3 +80,57 @@ kubectl scale statefulset/kafka --replicas=0
 kubectl scale statefulset/kafka --replicas=1
 # the relay sends the events, the gauge drops to 0 and webhook-receiver logs [RESOLVED]
 ```
+
+## Security
+
+### Network policies (`k8s/security/`)
+
+`default-deny-ingress` blocks all incoming traffic to every pod in the namespace; the other policies open only what
+is needed:
+
+| Pod | Accepts traffic from |
+|---|---|
+| api-gateway | anyone on 8080 (Ingress controller, NodePort) |
+| business services | api-gateway, prometheus; plus catalog -> auth:8081 and streaming -> catalog:8082 (internal APIs) |
+| each database / media-storage | only its own service |
+| kafka | auth, catalog, streaming, notification |
+| otel-collector, tempo, loki, prometheus, alertmanager, grafana, webhook-receiver | the pods that use them, plus the UIs |
+
+The services trust the `X-User-Id` / `X-User-Roles` headers, so without these policies any pod could call them
+directly and act as any user.
+
+NetworkPolicy needs a CNI that enforces it. Docker Desktop's Kubernetes accepts the manifests but blocks nothing.
+Use `minikube start --cni=calico`, or kind with a kindnet that supports network policies (or Calico).
+
+### Pod security
+
+Every pod sets `seccompProfile: RuntimeDefault`, `allowPrivilegeEscalation: false`, drops all capabilities and
+runs with `readOnlyRootFilesystem: true`; writable paths (`/tmp`, Postgres socket dir, Kafka config, ...) are
+`emptyDir` volumes. All pods run as non-root (services 10001, Postgres 70, ClickHouse 101, Kafka and SeaweedFS 1000,
+Prometheus/Alertmanager 65534, Grafana 472), except `otel-collector-logs`, which needs root to read the node's pod logs.
+`automountServiceAccountToken: false` everywhere except Prometheus (pod discovery uses the Kubernetes API).
+
+Postgres keeps its data in `pgdata/` inside the volume (`PGDATA`), because initdb running as non-root cannot change the
+permissions of the volume root. A volume created by an older version of the manifests starts as an empty database;
+remove it with `kubectl delete -k k8s` (deletes the PVCs) before applying.
+
+### Ingress
+
+`k8s/base/ingress.yaml` routes everything to `api-gateway:8080` (class `nginx`). minikube: `minikube addons enable ingress`,
+then `curl http://$(minikube ip)/api/v1/tracks`.
+
+### Checks
+
+```bash
+# the normal path works
+curl http://$(minikube ip)/api/v1/tracks
+# a database is unreachable from a foreign pod (times out)
+kubectl run attacker --rm -it --image=postgres:17-alpine -- psql -h catalog-db -U spotty_catalog_user -c 'select 1'
+# a service is unreachable around the gateway, even with forged identity headers (times out)
+kubectl run attacker --rm -it --image=curlimages/curl -- \
+  curl -m 5 -H "X-User-Id: 1" -H "X-User-Roles: ADMIN" http://auth-service:8081/api/v1/admin/users
+# pods run as non-root on a read-only filesystem without a ServiceAccount token
+kubectl exec deploy/catalog-service -- id
+kubectl exec deploy/catalog-service -- touch /app/x          # Read-only file system
+kubectl exec deploy/catalog-service -- ls /var/run/secrets/kubernetes.io   # No such file or directory
+```

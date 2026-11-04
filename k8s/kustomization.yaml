@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - base/configmap.yaml
   - base/secret.yaml
+  - base/ingress.yaml
   - databases/auth-db.yaml
   - databases/catalog-db.yaml
   - databases/library-db.yaml

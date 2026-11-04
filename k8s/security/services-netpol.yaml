@@ -52,3 +52,25 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
+---
+# catalog-service makes synchronous HTTP calls to auth-service (GET /internal/users?ids=) to resolve artist names.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-catalog-to-auth
+  labels:
+    app.kubernetes.io/part-of: spotty
+spec:
+  podSelector:
+    matchLabels:
+      app: auth-service
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: catalog-service
+      ports:
+        - protocol: TCP
+          port: 8081

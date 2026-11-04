@@ -111,16 +111,26 @@ spec:
       labels:
         app: otel-collector-logs
     spec:
+      # Deliberate exception: runs as root to read the kubelet's pod logs (root:root 0640) from the node.
+      # Still no privilege escalation, no capabilities and a read-only root filesystem.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: otel-collector-logs
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: otel/opentelemetry-collector-contrib:0.135.0
           imagePullPolicy: IfNotPresent
           args:
             - --config=/etc/otelcol/config.yaml
-          # The log files on the node belong to root
-          securityContext:
-            runAsUser: 0
-            runAsGroup: 0
           ports:
             - containerPort: 13133
               name: health

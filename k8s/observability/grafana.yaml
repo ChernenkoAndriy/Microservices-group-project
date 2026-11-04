@@ -75,10 +75,22 @@ spec:
       labels:
         app: grafana
     spec:
+      automountServiceAccountToken: false
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
         fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: grafana
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: grafana/grafana:12.1.1
           imagePullPolicy: IfNotPresent
           env:
@@ -96,6 +108,8 @@ spec:
             - containerPort: 3000
               name: http
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
             - name: data
@@ -113,6 +127,9 @@ spec:
               port: http
             periodSeconds: 10
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
         - name: datasources
           configMap:
             name: grafana-datasources
