@@ -29,6 +29,9 @@ public class TrackOwnership {
             if (e.getStatus().getCode() == Status.Code.NOT_FOUND) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track " + trackId + " does not exist");
             }
+            if (e.getStatus().getCode() == Status.Code.INVALID_ARGUMENT) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getStatus().getDescription());
+            }
             // UNAVAILABLE (after the retries), DEADLINE_EXCEEDED and anything else: catalog-service could not answer.
             log.warn("Could not check the owner of track id={} in catalog-service", trackId, e);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,

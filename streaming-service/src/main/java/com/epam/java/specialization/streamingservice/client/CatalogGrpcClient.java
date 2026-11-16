@@ -69,7 +69,13 @@ public class CatalogGrpcClient {
 
             @Override
             public void onCompleted() {
-                summary.complete(received);
+                if (received == null) {
+                    // Completed with OK but without the single response a client-streaming call must return.
+                    summary.completeExceptionally(Status.INTERNAL
+                            .withDescription("ReportPlays completed without a summary").asRuntimeException());
+                } else {
+                    summary.complete(received);
+                }
             }
         });
         events.forEach(requests::onNext);

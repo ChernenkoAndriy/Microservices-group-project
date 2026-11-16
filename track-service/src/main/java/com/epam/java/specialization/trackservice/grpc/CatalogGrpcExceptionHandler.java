@@ -5,8 +5,11 @@ import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.dao.TransientDataAccessException;
 import org.springframework.grpc.server.exception.GrpcExceptionHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.CannotCreateTransactionException;
 
 /**
  * The gRPC counterpart of GlobalExceptionHandler: maps an exception thrown by {@link CatalogGrpcService}
@@ -28,6 +31,14 @@ public class CatalogGrpcExceptionHandler implements GrpcExceptionHandler {
         if (exception instanceof IllegalArgumentException) {
             log.warn("Invalid gRPC request: {}", exception.getMessage());
             return Status.INVALID_ARGUMENT.withDescription(exception.getMessage()).asException();
+        }
+        // The database is down or overloaded: a temporary condition, so UNAVAILABLE (retryable by the client's
+        // retry policy) instead of INTERNAL, which a client must never retry.
+        if (exception instanceof TransientDataAccessException
+                || exception instanceof DataAccessResourceFailureException
+                || exception instanceof CannotCreateTransactionException) {
+            log.warn("Database unavailable during a gRPC call: {}", exception.getMessage());
+            return Status.UNAVAILABLE.withDescription("The catalog database is temporarily unavailable").asException();
         }
         log.error("Unexpected error in a gRPC call", exception);
         return Status.INTERNAL.withDescription("An unexpected error occurred.").asException();
