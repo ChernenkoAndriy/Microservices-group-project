@@ -1,0 +1,91 @@
+// Internal gRPC API of catalog-service (track-service/), port 9090.
+// Service-to-service only, like internal-openapi.yaml: every call carries the shared service token
+// in the `x-internal-token` metadata header. streaming-service is the client.
+//
+// Both services generate their code from this file (com.google.protobuf Gradle plugin); it is not copied.
+
+syntax = "proto3";
+
+package spotty.catalog.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.epam.java.specialization.grpc.catalog.v1";
+option java_outer_classname = "CatalogInternalProto";
+
+service CatalogInternalService {
+  // Unary. Owner and status of a track in any status (same as GET /internal/tracks/{trackId}).
+  // NOT_FOUND if the track does not exist, INVALID_ARGUMENT if track_id is not positive.
+  rpc GetTrackInfo(GetTrackInfoRequest) returns (TrackInfo);
+
+  // Server streaming. Every track of an artist, in any status, oldest first; one message per track.
+  rpc ListArtistTracks(ListArtistTracksRequest) returns (stream TrackInfo);
+
+  // Client streaming. The client sends play events and closes its side; the server adds one play per event
+  // to each track's counter (all or nothing) and answers with a summary. Not idempotent: never retried.
+  rpc ReportPlays(stream PlayEvent) returns (PlaySummary);
+
+  // Bidirectional streaming. For every request the server answers with the current status of that track.
+  rpc WatchTrackStatus(stream WatchTrackStatusRequest) returns (stream TrackStatusUpdate);
+}
+
+// Mirrors TrackStatus of openapi.yaml. 0 is the proto3 default and never sent by the server.
+enum TrackStatus {
+  TRACK_STATUS_UNSPECIFIED = 0;
+  TRACK_STATUS_AWAITING_AUDIO = 1;
+  TRACK_STATUS_PROCESSING = 2;
+  TRACK_STATUS_PUBLISHED = 3;
+  TRACK_STATUS_FAILED = 4;
+  TRACK_STATUS_UNPUBLISHED = 5;
+}
+
+message GetTrackInfoRequest {
+  int64 track_id = 1;
+}
+
+// What other services need to authorize actions on a track (InternalTrackInfo of internal-openapi.yaml),
+// plus a few fields the REST DTO does not have.
+message TrackInfo {
+  int64 id = 1;
+  int64 artist_id = 2;
+  TrackStatus status = 3;
+  string title = 4;
+  // Unset until the audio has been transcoded.
+  optional int32 duration_seconds = 5;
+  int64 play_count = 6;
+}
+
+message ListArtistTracksRequest {
+  int64 artist_id = 1;
+}
+
+message PlayEvent {
+  int64 track_id = 1;
+  int64 user_id = 2;
+  int32 listened_seconds = 3;
+  google.protobuf.Timestamp played_at = 4;
+}
+
+message PlaySummary {
+  int32 events_received = 1;
+  repeated TrackPlayCount tracks = 2;
+}
+
+message TrackPlayCount {
+  int64 track_id = 1;
+  // Plays added by this call.
+  int32 plays_added = 2;
+  // Counter after this call.
+  int64 total_plays = 3;
+}
+
+message WatchTrackStatusRequest {
+  int64 track_id = 1;
+}
+
+message TrackStatusUpdate {
+  int64 track_id = 1;
+  TrackStatus status = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}

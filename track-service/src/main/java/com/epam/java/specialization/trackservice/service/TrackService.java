@@ -27,6 +27,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -115,6 +116,37 @@ public class TrackService {
         return trackRepository.findById(trackId)
                 .map(trackMapper::toInternalInfo)
                 .orElseThrow(() -> trackNotFound(trackId));
+    }
+
+    /** A track in any status, for internal callers (gRPC). */
+    @Transactional(readOnly = true)
+    public Track getTrack(Long trackId) {
+        return trackRepository.findById(trackId).orElseThrow(() -> trackNotFound(trackId));
+    }
+
+    /** Every track of the artist in any status, oldest first, for internal callers (gRPC). */
+    @Transactional(readOnly = true)
+    public List<Track> listAllArtistTracks(Long artistId) {
+        return trackRepository.findByArtistIdOrderByCreatedAtAscIdAsc(artistId);
+    }
+
+    /**
+     * Adds plays to the tracks' counters, all or nothing: an unknown track rolls back the whole batch.
+     *
+     * @param playsByTrack plays to add per track id
+     * @return the counter of every track after the update, in the order of {@code playsByTrack}
+     */
+    @Transactional
+    public Map<Long, Long> addPlays(Map<Long, Integer> playsByTrack) {
+        Map<Long, Long> totals = new LinkedHashMap<>();
+        playsByTrack.forEach((trackId, plays) -> {
+            if (trackRepository.addPlays(trackId, plays) == 0) {
+                throw trackNotFound(trackId);
+            }
+            totals.put(trackId, trackRepository.findPlayCount(trackId));
+        });
+        log.debug("Added plays {}", playsByTrack);
+        return totals;
     }
 
     @Transactional

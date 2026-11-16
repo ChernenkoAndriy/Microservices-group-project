@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -64,6 +65,11 @@ public class Track {
     private TrackStatus status = TrackStatus.AWAITING_AUDIO;
 
     private Instant publishedAt;
+
+    /** Plays reported by streaming-service over gRPC (ReportPlays). The default lets ddl-auto add the column to existing rows. */
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private long playCount;
 
     @CreationTimestamp
     @Column(updatable = false)

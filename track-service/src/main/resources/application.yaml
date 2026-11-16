@@ -8,6 +8,13 @@ spring:
       fail-on-unknown-properties: true
   application:
     name: track-service
+  # gRPC server (catalog_internal.proto) on its own port, next to the REST API on 8082.
+  grpc:
+    server:
+      port: ${GRPC_SERVER_PORT:9090}
+      # Server reflection lets grpcurl and Postman list the services and messages without the .proto file.
+      reflection:
+        enabled: ${GRPC_REFLECTION_ENABLED:true}
   jpa:
     hibernate:
       ddl-auto: update

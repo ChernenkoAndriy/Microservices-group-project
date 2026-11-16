@@ -11,6 +11,39 @@ spring:
       fail-on-unknown-properties: true
   application:
     name: streaming-service
+  grpc:
+    client:
+      channel:
+        catalog:
+          # dns:/// resolves every address of the name; with round_robin the calls are spread over all catalog pods
+          # (in k8s the target is a headless service, so DNS returns the pod IPs instead of one cluster IP).
+          target: ${CATALOG_GRPC_TARGET:dns:///catalog-service:9090}
+          # Plaintext inside the compose network / cluster.
+          ssl:
+            enabled: false
+          default:
+            # Applied to every call that sets no deadline of its own (all retry attempts together).
+            deadline: 3s
+            load-balancing-policy: round_robin
+          # gRPC service config: retries are done by the channel itself (grpc-java enables them by default and
+          # uses this config, because DNS supplies none). Only for idempotent calls: ReportPlays is not listed,
+          # so a failed ReportPlays is never sent twice.
+          service-config:
+            method:
+              - name:
+                  - service: spotty.catalog.v1.CatalogInternalService
+                    method: GetTrackInfo
+                  - service: spotty.catalog.v1.CatalogInternalService
+                    method: ListArtistTracks
+                  - service: spotty.catalog.v1.CatalogInternalService
+                    method: WatchTrackStatus
+                retry:
+                  max-attempts: 3
+                  initial-backoff: 100ms
+                  max-backoff: 1s
+                  backoff-multiplier: 2
+                  retryable-status-codes:
+                    - UNAVAILABLE
   servlet:
     multipart:
       max-file-size: 50MB
@@ -58,12 +91,12 @@ transcoding:
     # Pretend transcoding takes this long, to see spotty_transcoding_active_seconds in Prometheus.
     simulated-delay-ms: ${TRANSCODING_SIMULATED_DELAY_MS:0}
 
-# GET /internal/tracks/{trackId} before an upload: the track exists and belongs to the caller.
-catalog-client:
-  base-url: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
+# catalog-service's gRPC API (api-contracts/catalog-service/grpc/catalog_internal.proto): GetTrackInfo before an
+# upload checks that the track exists and belongs to the caller; served streams are reported with ReportPlays.
+catalog-grpc:
   internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
-  connect-timeout: 1s
-  read-timeout: 2s
+  play-report:
+    interval-ms: 5000
 
 storage:
   s3:

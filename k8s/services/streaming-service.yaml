@@ -65,11 +65,11 @@ spec:
                 configMapKeyRef:
                   name: spotty-config
                   key: KAFKA_BOOTSTRAP_SERVERS
-            - name: CATALOG_SERVICE_URL
+            - name: CATALOG_GRPC_TARGET
               valueFrom:
                 configMapKeyRef:
                   name: spotty-config
-                  key: CATALOG_SERVICE_URL
+                  key: CATALOG_GRPC_TARGET
             - name: INTERNAL_API_TOKEN
               valueFrom:
                 secretKeyRef:

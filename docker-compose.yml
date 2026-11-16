@@ -213,6 +213,8 @@ services:
       SERVER_PORT: 8082
     ports:
       - "${CATALOG_SERVICE_PORT:-8082}:8082"
+      # gRPC (catalog_internal.proto): streaming-service calls it inside the network; grpcurl/Postman from the host.
+      - "${CATALOG_GRPC_PORT:-9090}:9090"
     depends_on:
       catalog-db:
         condition: service_healthy
@@ -237,7 +239,7 @@ services:
       SPRING_DATASOURCE_USERNAME: ${STREAMING_DB_USER:-spotty_streaming_user}
       SPRING_DATASOURCE_PASSWORD: ${STREAMING_DB_PASSWORD:-your_secure_streaming_password}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      CATALOG_SERVICE_URL: http://catalog-service:8082
+      CATALOG_GRPC_TARGET: dns:///catalog-service:9090
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-dev-internal-token}
       SERVER_PORT: 8083
     ports:
@@ -249,6 +251,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      catalog-service:
+        condition: service_started
     networks:
       - spotty-network
 
