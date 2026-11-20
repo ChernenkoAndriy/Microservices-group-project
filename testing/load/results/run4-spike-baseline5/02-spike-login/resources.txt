@@ -1,0 +1,48 @@
+--- 13:39:55
+api-gateway-79c55bd444-mf5kw        35m    252Mi   
+auth-service-75fcc7d548-fcglc       21m    411Mi   
+catalog-service-68c8d9f8b7-ss62w    141m   455Mi   
+--- 13:40:12
+api-gateway-79c55bd444-mf5kw        35m    252Mi   
+auth-service-75fcc7d548-fcglc       21m    411Mi   
+catalog-service-68c8d9f8b7-ss62w    141m   455Mi   
+--- 13:40:28
+api-gateway-79c55bd444-mf5kw        147m   261Mi   
+auth-service-75fcc7d548-fcglc       113m   411Mi   
+catalog-service-68c8d9f8b7-ss62w    52m    453Mi   
+--- 13:40:45
+api-gateway-79c55bd444-mf5kw        147m   261Mi   
+auth-service-75fcc7d548-fcglc       113m   411Mi   
+catalog-service-68c8d9f8b7-ss62w    52m    453Mi   
+--- 13:41:02
+api-gateway-79c55bd444-mf5kw        147m   261Mi   
+auth-service-75fcc7d548-fcglc       113m   411Mi   
+catalog-service-68c8d9f8b7-ss62w    52m    453Mi   
+--- 13:41:19
+api-gateway-79c55bd444-mf5kw        622m   309Mi   
+auth-service-75fcc7d548-fcglc       568m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    39m    453Mi   
+--- 13:41:38
+api-gateway-79c55bd444-mf5kw        622m   309Mi   
+auth-service-75fcc7d548-fcglc       568m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    39m    453Mi   
+--- 13:41:58
+api-gateway-79c55bd444-mf5kw        622m   309Mi   
+auth-service-75fcc7d548-fcglc       568m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    39m    453Mi   
+--- 13:42:15
+api-gateway-79c55bd444-mf5kw        537m   341Mi   
+auth-service-75fcc7d548-fcglc       643m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    37m    453Mi   
+--- 13:42:35
+api-gateway-79c55bd444-mf5kw        537m   341Mi   
+auth-service-75fcc7d548-fcglc       643m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    37m    453Mi   
+--- 13:42:53
+api-gateway-79c55bd444-mf5kw        537m   341Mi   
+auth-service-75fcc7d548-fcglc       643m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    37m    453Mi   
+--- 13:43:09
+api-gateway-79c55bd444-mf5kw        537m   341Mi   
+auth-service-75fcc7d548-fcglc       643m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    37m    453Mi   

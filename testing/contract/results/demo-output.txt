@@ -1,0 +1,13 @@
+== 0. Baseline
+   consumer (catalog-service) test : PASSED
+   provider (auth-service) verify  : PASSED
+== 1. Provider renames the JSON field displayName -> display_name (auth-service internal-openapi.yaml)
+   provider (auth-service) verify  : FAILED   <- expected FAILED
+      | Actual map is missing the following keys: displayName
+== 2. Consumer starts to require avatarUrl (catalog-service consumer test)
+   consumer (catalog-service) test : PASSED   (the consumer itself is fine)
+   provider (auth-service) verify  : FAILED   <- expected FAILED
+      | Actual map is missing the following keys: avatarUrl
+== 3. Restore and re-verify
+   consumer (catalog-service) test : PASSED
+   provider (auth-service) verify  : PASSED

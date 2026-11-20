@@ -1,0 +1,40 @@
+# One k6 run inside the cluster (same network as the services, no port-forward in the way).
+# run-load-tests.sh fills in __NAME__, __SCRIPT__ and __RUN_ID__ and mounts the scripts from the k6-scripts ConfigMap.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-__NAME__
+  labels:
+    app: k6
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: k6
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: k6
+          image: grafana/k6:1.3.0
+          args: ["run", "--no-color", "/scripts/__SCRIPT__"]
+          env:
+            - name: BASE_URL
+              value: http://api-gateway:8080
+            - name: RUN_ID
+              value: "__RUN_ID__"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: k6-scripts

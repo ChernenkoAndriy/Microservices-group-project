@@ -1,0 +1,13 @@
+==== 03 stress: catalog -> auth chain ====
+requests          : 11736 (32.07/s)
+iterations        : 11585
+failed rate       : 71.30 %
+duration avg/med  : 3546.38 / 1008.60 ms
+duration p90/p95  : 10903.85 / 13823.98 ms
+duration p99/max  : 19706.44 / 32113.72 ms
+checks passed     : 63.98 %
+thresholds:
+  FAIL  http_req_duration{scenario:catalog_stress}: p(95)<800
+  FAIL  http_req_failed{scenario:catalog_stress}: rate<0.05
+  PASS  artist_name_fallback: rate<0.05
+k6 exited non-zero (a threshold failed or the run aborted)

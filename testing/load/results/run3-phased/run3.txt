@@ -1,0 +1,48 @@
+=== 02-spike-login (run 1795173533) started 2026-11-20 13:18:53
+    finished 13:22:06: k6 exited non-zero (a threshold failed or the run aborted)
+==== 02 spike: login burst ====
+requests          : 5047 (39.47/s)
+iterations        : 5037 (dropped: 312)
+failed rate       : 26.09 %
+duration avg/med  : 1324.38 / 223.28 ms
+duration p90/p95  : 4371.13 / 6931.51 ms
+duration p99/max  : 11364.99 / 15856.19 ms
+checks passed     : 91.28 %
+thresholds:
+  FAIL  login_ok_duration: p(95)<1500
+  PASS  login_rate_limited: rate>0
+  FAIL  checks{scenario:login_spike}: rate>0.99
+  FAIL  login_5xx: count==0
+per phase:
+  phase        reqs    2xx    429    5xx   err  failed%   med ms   p95 ms   p99 ms
+  spike        4214     74   3171    969     0    22.99   250.96  6815.35 13798.94
+  recovery      674     34    343    297     0    44.07    34.04  1993.20 10314.38
+  baseline      149     98      0     51     0    34.23  2061.63  8184.40  8955.09
+k6 exited non-zero (a threshold failed or the run aborted)
+
+=== 03-stress-catalog-auth (run 1795173727) started 2026-11-20 13:22:07
+    finished 13:31:24: k6 exited non-zero (a threshold failed or the run aborted)
+==== 03 stress: catalog -> auth chain ====
+requests          : 8467 (17.50/s)
+iterations        : 8316 (dropped: 9371)
+failed rate       : 60.71 %
+duration avg/med  : 4303.90 / 1794.35 ms
+duration p90/p95  : 11724.12 / 18301.77 ms
+duration p99/max  : 30104.36 / 45827.04 ms
+checks passed     : 69.21 %
+thresholds:
+  FAIL  http_req_duration{scenario:catalog_stress}: p(95)<800
+  FAIL  artist_name_fallback: rate<0.05
+  FAIL  http_req_failed{scenario:catalog_stress}: rate<0.05
+per phase:
+  phase        reqs    2xx    429    5xx   err  failed%   med ms   p95 ms   p99 ms
+  rampdown      184      0      0      0   184   100.00     0.00     0.00     0.00
+  s3_35rps     1949    925      0   1024     0    52.54  2754.89  7366.64 10408.08
+  s5_75rps     1247    173      0    384   690    86.13     0.00 24432.61 30001.83
+  s2_20rps     1083    852      0    231     0    21.33   527.13  8267.26 10253.76
+  s6_100rps    1050      0      0      0  1050   100.00     0.00     0.00     0.00
+  s4_50rps     2242    665      0   1577     0    70.34  6188.72 24214.83 37510.55
+  s1_10rps      561    561      0      0     0     0.00    95.24  1082.93  1560.26
+k6 exited non-zero (a threshold failed or the run aborted)
+
+run-load-tests.sh: line 53: syntax error near unexpected token `)'

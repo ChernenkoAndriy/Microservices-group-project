@@ -1,0 +1,7 @@
+## api-gateway
+    816 Rate limit exceeded for ip:X on POST PATH
+    804 Route null failed: io.github.resilience4j.circuitbreaker.CallNotPermittedException: CircuitBreaker 'auth-service' is OPEN and does not permit further calls
+    503 Route null failed: io.github.resilience4j.circuitbreaker.CallNotPermittedException: CircuitBreaker 'auth-service' is HALF_OPEN and does not permit further calls
+    183 Route null failed: org.springframework.web.client.ResourceAccessException: I/O error on POST request for \
+## catalog-service
+restarts after : api-gateway-79c55bd444-mf5kw=3 auth-service-75fcc7d548-fcglc=1 catalog-service-68c8d9f8b7-ss62w=1 

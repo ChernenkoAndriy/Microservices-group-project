@@ -1,0 +1,51 @@
+=== 01-load-artist-dashboard (run 1795172463) started 2026-11-20 13:01:03
+    finished 13:06:03: k6 exited non-zero (a threshold failed or the run aborted)
+==== 01 load: artist dashboard ====
+requests          : 2311 (9.90/s)
+iterations        : 438
+failed rate       : 0.00 %
+duration avg/med  : 1101.51 / 986.55 ms
+duration p90/p95  : 2146.22 / 2470.17 ms
+duration p99/max  : 3064.19 / 7123.57 ms
+checks passed     : 100.00 %
+thresholds:
+  FAIL  http_req_duration{scenario:artist_dashboard}: p(95)<500
+  FAIL  http_req_duration{scenario:artist_dashboard}: p(99)<1000
+  PASS  http_req_failed{scenario:artist_dashboard}: rate<0.01
+  FAIL  group_duration{group:::dashboard page}: p(95)<2000
+  PASS  checks{scenario:artist_dashboard}: rate>0.99
+k6 exited non-zero (a threshold failed or the run aborted)
+
+=== 02-spike-login (run 1795172764) started 2026-11-20 13:06:04
+    finished 13:09:11: k6 exited non-zero (a threshold failed or the run aborted)
+==== 02 spike: login burst ====
+requests          : 5285 (42.91/s)
+iterations        : 5275
+failed rate       : 24.18 %
+duration avg/med  : 566.01 / 22.42 ms
+duration p90/p95  : 343.43 / 3622.50 ms
+duration p99/max  : 10214.90 / 11286.33 ms
+checks passed     : 91.92 %
+thresholds:
+  PASS  login_rate_limited: rate>0
+  FAIL  login_ok_duration: p(95)<1500
+  FAIL  checks{scenario:login_spike}: rate>0.99
+  FAIL  login_5xx: count==0
+k6 exited non-zero (a threshold failed or the run aborted)
+
+=== 03-stress-catalog-auth (run 1795172952) started 2026-11-20 13:09:12
+    finished 13:16:22: k6 exited non-zero (a threshold failed or the run aborted)
+==== 03 stress: catalog -> auth chain ====
+requests          : 11736 (32.07/s)
+iterations        : 11585
+failed rate       : 71.30 %
+duration avg/med  : 3546.38 / 1008.60 ms
+duration p90/p95  : 10903.85 / 13823.98 ms
+duration p99/max  : 19706.44 / 32113.72 ms
+checks passed     : 63.98 %
+thresholds:
+  FAIL  http_req_duration{scenario:catalog_stress}: p(95)<800
+  FAIL  http_req_failed{scenario:catalog_stress}: rate<0.05
+  PASS  artist_name_fallback: rate<0.05
+k6 exited non-zero (a threshold failed or the run aborted)
+

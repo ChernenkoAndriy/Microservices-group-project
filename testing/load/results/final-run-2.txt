@@ -1,0 +1,47 @@
+=== 02-spike-login (run 1795175759) started 2026-11-20 13:55:59
+    finished 13:59:55: k6 exited non-zero (a threshold failed or the run aborted)
+==== 02 spike: login burst ====
+requests          : 2985 (18.81/s)
+iterations        : 2975 (dropped: 224)
+failed rate       : 38.39 %
+duration avg/med  : 1109.33 / 265.70 ms
+duration p90/p95  : 2895.42 / 4304.83 ms
+duration p99/max  : 13392.70 / 14799.46 ms
+checks passed     : 87.16 %
+thresholds:
+  FAIL  login_5xx: count==0
+  FAIL  checks{scenario:login_spike}: rate>0.99
+  FAIL  login_ok_duration: p(95)<1500
+  PASS  login_rate_limited: rate>0
+per phase:
+  phase        reqs    2xx    429    5xx   err  failed%   med ms   p95 ms   p99 ms
+  baseline       60     60      0      0     0     0.00   839.89  2742.35  3453.75
+  spike        2487     23   1493    971     0    39.04   255.57  5277.19 13650.42
+  recovery      428    114    139    175     0    40.89   206.44  1626.42  4876.30
+k6 exited non-zero (a threshold failed or the run aborted)
+
+=== 03-stress-catalog-auth (run 1795176058) started 2026-11-20 14:00:58
+    finished 14:09:39: k6 exited non-zero (a threshold failed or the run aborted)
+==== 03 stress: catalog -> auth chain ====
+requests          : 15596 (35.31/s)
+iterations        : 15445 (dropped: 2242)
+failed rate       : 38.59 %
+duration avg/med  : 2825.45 / 1327.06 ms
+duration p90/p95  : 7817.99 / 9976.37 ms
+duration p99/max  : 13484.78 / 21348.64 ms
+checks passed     : 80.56 %
+thresholds:
+  FAIL  http_req_failed{scenario:catalog_stress}: rate<0.05
+  PASS  artist_name_fallback: rate<0.05
+  FAIL  http_req_duration{scenario:catalog_stress}: p(95)<800
+per phase:
+  phase        reqs    2xx    429    5xx   err  failed%   med ms   p95 ms   p99 ms
+  s1_10rps      539    224      0    315     0    58.44   468.44 11946.91 19740.80
+  s2_20rps     1125   1118      0      7     0     0.62    75.49   987.65  1595.96
+  s3_35rps     1725   1291      0    434     0    25.16   102.11  7768.94 13463.22
+  s4_50rps     2882   2003      0    879     0    30.50   201.02  4332.04  9594.59
+  s5_75rps     3449   2256      0   1193     0    34.59  1526.62  9724.21 12564.44
+  s6_100rps    4757   1928      0   2829     0    59.47  4008.46 11160.80 13899.43
+  rampdown      968    607      0    361     0    37.29  6917.75 11979.23 13353.54
+k6 exited non-zero (a threshold failed or the run aborted)
+

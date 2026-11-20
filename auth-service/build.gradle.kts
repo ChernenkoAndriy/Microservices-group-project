@@ -39,6 +39,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    // Pact provider verification (JUnit 5 + Spring 7 MockMvc target) of the consumer pacts in ../pacts
+    testImplementation("au.com.dius.pact.provider:spring7:4.7.7")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
@@ -52,6 +55,17 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Pact files written by the consumers (track-service) live in <repo>/pacts
+    systemProperty("pactFolder", "$rootDir/../pacts")
+}
+
+// ./gradlew contractTest: only the Pact provider verification.
+tasks.register<Test>("contractTest") {
+    description = "Verifies auth-service against the consumer pacts in ../pacts"
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("contract") }
 }
 
 // MapStruct mappers are Spring beans, and a target property left unmapped is a compile error.

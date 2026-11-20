@@ -49,6 +49,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-grpc-server-test")
     testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
     testImplementation("org.wiremock:wiremock-standalone:3.13.2")
+    // Consumer-driven contract tests (Pact): the consumer tests write pacts/catalog-service-auth-service.json
+    testImplementation("au.com.dius.pact.consumer:junit5:4.7.7")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
@@ -60,6 +62,18 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Pact files go to <repo>/pacts, where the provider (auth-service) verification reads them from.
+    systemProperty("pact.rootDir", "$rootDir/../pacts")
+    systemProperty("pact.writer.overwrite", "true")
+}
+
+// ./gradlew contractTest: only the consumer contract tests (writes the pact file).
+tasks.register<Test>("contractTest") {
+    description = "Runs the Pact consumer tests and writes the pact file to ../pacts"
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("contract") }
 }
 
 // MapStruct mappers are Spring beans, and a target property left unmapped is a compile error.
