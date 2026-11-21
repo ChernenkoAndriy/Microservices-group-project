@@ -101,7 +101,7 @@ AuthServiceContractTest  --записує-->  2 взаємодії, matchers, pr
 |---|---|
 | Хост | Windows 11, 4 логічні CPU, 20 GB RAM; Docker Desktop (WSL2 обмежено до 14 GB у `%USERPROFILE%\.wslconfig`) |
 | Кластер | minikube v1.39.0, docker driver, **4 CPU / 12 GB**, containerd, metrics-server |
-| Розгорнуто | `kubectl apply -k k8s-local`: 1 репліка на сервіс. Под кожного сервісу: CPU request 100m / **limit 750m**, memory 384Mi / 768Mi |
+| Розгорнуто | `kubectl apply -k k8s` (масштабовано до 1 репліки на сервіс). Под кожного сервісу: CPU request 100m / **limit 750m**, memory 384Mi / 768Mi |
 | Масштабовано до 0 на час запусків | library, notification, recommendation, streaming сервіси, їхні БД, grafana, loki, tempo. Вони не лежать на тестованих шляхах, а на 4 CPU відбирали ресурс у сервісів під тестом |
 | Генератор навантаження | `grafana/k6:1.3.0` як Kubernetes Job у тому ж кластері (`testing/load/k6-job.yaml`), CPU limit 1. Звертається до `http://api-gateway:8080`, як справжній клієнт: перевірка JWT, rate limiting, circuit breakers і bulkheads працюють |
 | Що вимірювалося | підсумок k6 (`summary.txt`, `summary.json`), `kubectl top pods` кожні 15 с (`resources.txt`), згруповані WARN/ERROR логи gateway, catalog і auth та кількість рестартів (`service-warnings.txt`) |

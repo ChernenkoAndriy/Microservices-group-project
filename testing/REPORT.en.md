@@ -98,7 +98,7 @@ In CI the provider verification would run on every auth-service PR, with the pac
 |---|---|
 | Host | Windows 11, 4 logical CPUs, 20 GB RAM; Docker Desktop (WSL2 limited to 14 GB in `%USERPROFILE%\.wslconfig`) |
 | Cluster | minikube v1.39.0, docker driver, **4 CPU / 12 GB**, containerd, metrics-server |
-| Deployed | `kubectl apply -k k8s-local`: 1 replica per service. Each service pod: CPU request 100m / **limit 750m**, memory 384Mi / 768Mi |
+| Deployed | `kubectl apply -k k8s` (scaled to 1 replica per service). Each service pod: CPU request 100m / **limit 750m**, memory 384Mi / 768Mi |
 | Scaled to 0 during the runs | library, notification, recommendation and streaming services, their databases, grafana, loki, tempo. They are not on the tested paths, and on 4 CPUs they starved the services under test |
 | Load generator | `grafana/k6:1.3.0` as a Kubernetes Job in the same cluster (`testing/load/k6-job.yaml`), CPU limit 1. It calls `http://api-gateway:8080` like a real client: JWT checks, rate limiting, circuit breakers and bulkheads all apply |
 | Measured | k6 summary (`summary.txt`, `summary.json`), `kubectl top pods` every 15 s (`resources.txt`), grouped WARN/ERROR logs of gateway, catalog and auth and the restart counts (`service-warnings.txt`) |
