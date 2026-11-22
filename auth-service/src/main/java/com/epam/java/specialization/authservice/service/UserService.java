@@ -112,6 +112,8 @@ public class UserService {
         User saved = userRepository.saveAndFlush(user);
         log.debug("User id={} updated user id={}: role={} status={}", callerId, userId, saved.getRole(), saved.getStatus());
 
+        outboxService.saveUserSnapshot(saved);
+
         if (status == UserStatus.BLOCKED && previousStatus != UserStatus.BLOCKED) {
             outboxService.save("auth.user.email", saved.getId().toString(),
                     emailEvent(saved, AuthEmailEvent.TemplateEnum.ACCOUNT_BLOCKED));

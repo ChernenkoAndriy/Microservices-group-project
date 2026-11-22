@@ -37,4 +37,9 @@ Each entry: what was decided, why, and the alternatives considered. Entries mark
     parameters as time-only literals in SELECTs.
 16. **Seed Job** is idempotent per album and not part of the kustomization (`kubectl apply -f k8s/services/seed-job.yaml`).
 17. **Frontend deployment** is a NodePort service (30300) with nginx proxying `/api` to `api-gateway:8080`.
-18. **Cover images (O2):** stored in the media bucket under `{trackId}/cover`, served publicly by `GET /api/v1/media/{id}/cover`; `AssetReadySnapshot` got an optional `coverUrl` (re-sent when a cover is uploaded after the audio is READY). Catalog stores it on the track. O3–O4 not implemented yet.
+18. **Cover images (O2):** stored in the media bucket under `{trackId}/cover`, served publicly by `GET /api/v1/media/{id}/cover`; `AssetReadySnapshot` got an optional `coverUrl` (re-sent when a cover is uploaded after the audio is READY). Catalog stores it on the track.
+19. **Notification (O3/O4):** templates, preferences, user copies and follower lists live in notification-service tables
+    (default templates are created at startup and never overwritten). Release emails go to followers who are ACTIVE and have
+    `newReleases` on (default on). The artist name is looked up in catalog-service over REST (fallback text if it is down).
+    auth-service got a `UserSnapshot` outbox event (register, role/status change, plus a one-time republish at startup) because
+    notification needs recipients' emails; follow events are told apart by the `eventType` Kafka header.

@@ -4,8 +4,7 @@
   `ArtistDirectoryTest`, `AuthServiceContractTest`, `AuthClientResilienceIntegrationTest` produced no result within 8 min
   (earlier they passed in a targeted rerun). Run `./gradlew test` in `track-service` on your machine and confirm they pass.
   The new `AlbumAndTrackApiIntegrationTest` (6 tests) passes.
-- [ ] **Not done: optional steps O2–O4** (cover upload `POST /media/{id}/cover`, notification preferences/log/templates,
-  notification consuming `TrackPublishedEvent`/follows and emailing followers). Covers are pastel gradients derived from the id.
+- [ ] **Optional steps O2-O4 are implemented** (cover upload, notification preferences/log/templates, follower emails). No SMTP server exists in the cluster, so emails are rendered and logged as SENT but not delivered; set `spring.mail.host` (and `notification.mail.from`) on notification-service to send for real. A failed send is recorded as FAILED once (no `RETRYING` cycle). A duplicate template code returns 409 with the code in the message text, not a separate `code` field. auth-service now publishes `UserSnapshot` (and republishes all users once at startup).
 - [ ] **Seed data has two mangled artist names** ("eturn", "uzak Supreme") from an early seed run where ffmpeg consumed the
   script's stdin. Fixed in `seed/seed.sh` (`-nostdin`); existing rows were not deleted (policy). Rename them via `PATCH /users/me`
   as those artists or recreate the DB if you want clean names.
