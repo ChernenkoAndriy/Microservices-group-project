@@ -2,26 +2,23 @@
 
 ## Current state
 
-- **Task:** `docs/FRONTEND_BRIEF.md` + `CLAUDE.md` + Phase-1 answers (implement all missing backend for real,
-  no stubs; minikube 8 GB; all steps 1–18 plus optional O1–O4).
-- **Branch:** `feature/frontend-vaporwave` (from `grpc-task`)
-- **Steps done:** 1, 2
-- **Current step:** 3 — catalog albums + outbox + TrackSnapshot (+ O1 track edit/delete, TrackPublishedEvent).
-  Code + test (`AlbumAndTrackApiIntegrationTest`) written, NOT yet compiled/tested/committed.
-  To do: run tests, build image, deploy, curl, commit.
-- **Step 4 code written (uncommitted, untested):** StreamTokenService, ByteRange, StreamingController
-  (token + Range), StreamingException(+Handler), ClockConfig, config, k8s STREAM_TOKEN_SECRET env, tests
-  (StreamTokenServiceTest, ByteRangeTest, StreamingControllerTest).
-- **Step 5 code mostly written (uncommitted, untested):** library build deps, outbox/tracing/exception/
-  CorrelationIdFilter copied from catalog, TrackLike/ArtistFollow + repos, CatalogDirectory clients,
-  LibraryEvents, LikeService/FollowService, controllers, ClockConfig, KafkaTopicsConfig, application.yaml.
-  To do: k8s env for library (KAFKA, CATALOG/AUTH URL, INTERNAL_API_TOKEN), test properties, tests.
-- **Next step:** 4 — streaming tokens + ranges
-- **How to run Gradle:** local Gradle sees JDK 11 via JAVA_HOME. Use PowerShell (Git Bash mangles paths):
-  `docker run --rm -v spotty-gradle:/root/.gradle -v D:/Microservices-group-project:/work -w /work/<service> eclipse-temurin:25-jdk ./gradlew test --no-daemon --console=plain`
-- **Pod replica changes not yet restored:** grafana, loki, otel-collector, tempo, alertmanager,
-  webhook-receiver, prometheus → 0 (k8s-local value: 1 each); daemonset otel-collector-logs patched with
-  nodeSelector `spotty-disabled=true` (restore: `kubectl apply -k k8s-local`).
+- **Task:** docs/FRONTEND_BRIEF.md + CLAUDE.md + Phase-1 answers.
+- **Branch:** feature/frontend-vaporwave
+- **Steps done:** 1–17, O1. Step 18 partly (replicas restored, MANUAL_CHECKS written).
+- **Not done:** O2 (cover upload), O3 (notification preferences/log/templates), O4 (notification consumes TrackPublishedEvent/follows, emails followers). STATUS: DONE is withheld because of these.
+- **Next step:** O2, then O3, O4; then add `STATUS: DONE` here.
+- **Pod replica changes not yet restored:** none (`kubectl apply -k k8s-local` run at the end; frontend added, 1 replica). If you scale observability down again, log it below.
+- **How to run Gradle:** `docker run --rm -v spotty-gradle:/root/.gradle -v D:/Microservices-group-project:/work -w /work/<service> eclipse-temurin:25-jdk ./gradlew test --no-daemon --console=plain` (PowerShell). Full suites hang in this container; run single classes.
+
+## Summary of this session
+
+- Catalog: albums, track PATCH/DELETE, outbox, TrackSnapshot/TrackPublishedEvent (6 new integration tests pass).
+- Streaming: signed stream tokens + single byte ranges (verified 206/416/401 live).
+- Library: likes, follows, playlists, outbox events (verified live).
+- Recommendation: Kafka consumers, charts, personal feed, impressions (verified live; fixed ClickHouse timestamp binding).
+- Seed Job (ffmpeg audio, 8 artists x 8 albums x 2 tracks, demo listener).
+- Frontend: Vite/React/TS, generated API types, vaporwave design, persistent player, all pages; Vitest 28 tests, Playwright 9 tests (Chromium, against the cluster) pass; nginx image deployed as svc/frontend (NodePort 30300).
+- Known issues: see docs/MANUAL_CHECKS.md.
 
 ## Plan (approved)
 
@@ -51,7 +48,7 @@ O1–O4. Optional backend gaps (catalog track edit/delete + TrackPublishedEvent,
 
 | When | Change | Restored |
 |---|---|---|
-| 2026-11-22 01:10 | grafana, loki, otel-collector, tempo, alertmanager, webhook-receiver, prometheus 1 → 0; ds otel-collector-logs disabled via nodeSelector | no |
+| 2026-11-22 01:10 | grafana, loki, otel-collector, tempo, alertmanager, webhook-receiver, prometheus 1 → 0; ds otel-collector-logs disabled via nodeSelector | yes (kubectl apply -k k8s-local, 2026-11-22) |
 
 ## Step log
 

@@ -28,3 +28,13 @@ Each entry: what was decided, why, and the alternatives considered. Entries mark
     (14 GB). Not changed; owner said to plan for 12 GB.
 
 ## Implementation
+13. **Stream URL carries the token** as `?token=` (the `<audio>` element cannot send headers); tokens are short-lived,
+    signed (HMAC) and bound to user + track. Playback restarts with a fresh token if the audio errors once.
+14. **Feed ranking** is computed on request from ClickHouse copies (snapshots, likes, plays, impressions): liked artists/genres
+    and played genres score, recently shown tracks are penalized (not removed), no profile -> `TRENDING`. Impressions are
+    stored by consuming the service's own `recommendation.feed.served` topic.
+15. **ClickHouse timestamps** are bound as epoch seconds with `toDateTime(?)` because driver 0.6.3 renders `Timestamp`
+    parameters as time-only literals in SELECTs.
+16. **Seed Job** is idempotent per album and not part of the kustomization (`kubectl apply -f k8s/services/seed-job.yaml`).
+17. **Frontend deployment** is a NodePort service (30300) with nginx proxying `/api` to `api-gateway:8080`.
+18. **Optional steps O2–O4 were not implemented** (see MANUAL_CHECKS).
