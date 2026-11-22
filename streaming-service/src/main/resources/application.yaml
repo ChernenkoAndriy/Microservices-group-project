@@ -98,6 +98,12 @@ catalog-grpc:
   play-report:
     interval-ms: 5000
 
+# Signed playback tokens (POST /api/v1/streaming/{trackId}/token). HMAC-SHA256 key, at least 32 characters.
+stream-token:
+  secret: ${STREAM_TOKEN_SECRET:dev-stream-token-secret-change-me-please-32+}
+  stream-ttl: PT5M
+  offline-ttl: PT24H
+
 storage:
   s3:
     endpoint: ${S3_ENDPOINT:http://media-storage:9000}

@@ -46,6 +46,29 @@ spec:
                 secretKeyRef:
                   name: spotty-secrets
                   key: LIBRARY_DB_PASSWORD
+            # Like and follow events (outbox -> Kafka).
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            # Internal APIs checked before a like (catalog) and a follow (auth).
+            - name: CATALOG_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: CATALOG_SERVICE_URL
+            - name: AUTH_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: spotty-config
+                  key: AUTH_SERVICE_URL
+            - name: INTERNAL_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: spotty-secrets
+                  key: INTERNAL_API_TOKEN
+                  optional: true
             # Tracing: spans go to the OpenTelemetry Collector over OTLP/HTTP; the pod, namespace and node
             # become resource attributes of every span (Downward API).
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

@@ -28,9 +28,19 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
     implementation("org.springframework.boot:spring-boot-starter-aspectj")
+    implementation("org.springframework.boot:spring-boot-starter-kafka")
+    implementation("org.springframework.boot:spring-boot-starter-restclient")
+    compileOnly("org.projectlombok:lombok:1.18.48")
+    annotationProcessor("org.projectlombok:lombok:1.18.48")
+    annotationProcessor("org.projectlombok:lombok-mapstruct-binding:0.2.0")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-kafka-test")
+    testCompileOnly("org.projectlombok:lombok:1.18.48")
+    testAnnotationProcessor("org.projectlombok:lombok:1.18.48")
+    testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
@@ -63,7 +73,8 @@ openApiGenerate {
             "useBeanValidation" to "true",
             "useSpringBuiltInValidation" to "true",
             "openApiNullable" to "false",
-            "skipDefaultInterface" to "false",
+            // Every operation is implemented, so no 501 default methods (api-contracts/README.md).
+            "skipDefaultInterface" to "true",
             "documentationProvider" to "none",
             "annotationLibrary" to "none",
             "generateJsonIncludeAnnotations" to "false",

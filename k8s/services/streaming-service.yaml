@@ -76,6 +76,13 @@ spec:
                   name: spotty-secrets
                   key: INTERNAL_API_TOKEN
                   optional: true
+            # HMAC key of the signed playback tokens; the dev default in application.yaml applies without it.
+            - name: STREAM_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: spotty-secrets
+                  key: STREAM_TOKEN_SECRET
+                  optional: true
             # Tracing: spans go to the OpenTelemetry Collector over OTLP/HTTP; the pod, namespace and node
             # become resource attributes of every span (Downward API).
             - name: MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT

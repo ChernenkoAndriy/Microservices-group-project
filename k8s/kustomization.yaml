@@ -19,6 +19,7 @@ resources:
   - services/notification-service.yaml
   - services/library-service.yaml
   - services/api-gateway.yaml
+  - services/frontend.yaml
   - monitoring/prometheus.yaml
   - monitoring/alertmanager.yaml
   - observability

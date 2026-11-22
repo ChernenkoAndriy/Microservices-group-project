@@ -1,0 +1,31 @@
+# One-off demo data (artists, albums, synthesized tracks, demo listener) through the API gateway.
+# Run: kubectl apply -f k8s/services/seed-job.yaml   (not part of kustomization.yaml: it is optional)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spotty-seed
+  labels:
+    app: spotty-seed
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: spotty-seed
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: spotty-seed:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: API_URL
+              value: http://api-gateway:8080
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi

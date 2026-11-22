@@ -18,6 +18,43 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    # PRODUCER span per record and traceparent in its headers (W3C Trace Context over Kafka).
+    template:
+      observation-enabled: true
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # Idempotent producer: a retried send never writes the same record twice to a partition.
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Fail fast while Kafka is down; the event stays in the outbox and the relay tries again.
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+
+events:
+  topics:
+    track-likes: library.track-likes
+    artist-follows: library.artist-follows
+    partitions: 3
+
+# Sends the like and follow events written to the outbox (OutboxRelay), oldest first.
+outbox:
+  relay:
+    poll-interval-ms: 1000
+    batch-size: 50
+    send-timeout-ms: 10000
+
+# Internal APIs checked before a like (catalog) or a follow (auth), with the shared service token.
+clients:
+  catalog-base-url: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
+  auth-base-url: ${AUTH_SERVICE_URL:http://auth-service:8081}
+  internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
+  connect-timeout: 1s
+  read-timeout: 2s
 
 logging:
   # One JSON object per line (logstash format) with the MDC values, so traceId and spanId are fields of every

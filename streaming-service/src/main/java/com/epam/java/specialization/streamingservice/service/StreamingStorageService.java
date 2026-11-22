@@ -52,6 +52,18 @@ public class StreamingStorageService {
         return "s3://" + bucketName + "/" + fileName;
     }
 
+    /** {@code length} bytes from {@code offset} on (a byte range of the object). */
+    public InputStream getAudioStream(String fileName, long offset, long length) throws Exception {
+        return minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(fileName)
+                        .offset(offset)
+                        .length(length)
+                        .build()
+        );
+    }
+
     public InputStream getAudioStream(String fileName) throws Exception {
         return minioClient.getObject(
                 GetObjectArgs.builder()
