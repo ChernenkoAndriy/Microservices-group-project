@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -47,6 +49,11 @@ public class Track {
     @OrderColumn(name = "position")
     @BatchSize(size = 100)
     private List<Genre> genres = new ArrayList<>();
+
+    /** The album the track belongs to, or {@code null} for a standalone track. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "album_id")
+    private Album album;
 
     private Integer trackNumber;
 

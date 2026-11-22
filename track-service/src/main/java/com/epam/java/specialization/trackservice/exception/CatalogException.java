@@ -24,6 +24,10 @@ public class CatalogException extends ApiException {
         return new CatalogException(HttpStatus.NOT_FOUND, code, message);
     }
 
+    public static CatalogException conflict(String code, String message) {
+        return new CatalogException(HttpStatus.CONFLICT, code, message);
+    }
+
     public static CatalogException unprocessable(String code, String message) {
         return new CatalogException(HttpStatus.UNPROCESSABLE_ENTITY, code, message);
     }

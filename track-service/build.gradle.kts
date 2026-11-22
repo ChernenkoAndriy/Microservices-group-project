@@ -106,7 +106,13 @@ openApiGenerate {
     modelPackage.set("com.epam.java.specialization.trackservice.api.dto")
     modelNameSuffix.set("Dto")
     typeMappings.set(stringUris)
-    configOptions.set(springOptions + mapOf("interfaceOnly" to "true", "skipDefaultInterface" to "false"))
+    // Every public operation is implemented, so no 501 default methods (api-contracts/README.md).
+    // containerDefaultToNull: an omitted optional list stays null, so PATCH bodies without genreSlugs pass @Size(min = 1).
+    configOptions.set(springOptions + mapOf(
+        "interfaceOnly" to "true",
+        "skipDefaultInterface" to "true",
+        "containerDefaultToNull" to "true",
+    ))
 }
 
 val openApiGenerateInternal by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {

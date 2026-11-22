@@ -1,7 +1,9 @@
 package com.epam.java.specialization.trackservice.controller;
 
 import com.epam.java.specialization.trackservice.api.ArtistsApi;
+import com.epam.java.specialization.trackservice.api.dto.AlbumSummaryPageDto;
 import com.epam.java.specialization.trackservice.api.dto.ArtistDto;
+import com.epam.java.specialization.trackservice.service.AlbumService;
 import com.epam.java.specialization.trackservice.api.dto.TrackPageDto;
 import com.epam.java.specialization.trackservice.api.dto.TrackSortDto;
 import com.epam.java.specialization.trackservice.api.dto.TrackStatusDto;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ArtistController implements ArtistsApi {
 
     private final ArtistService artistService;
+    private final AlbumService albumService;
     private final TrackService trackService;
     private final CurrentUser currentUser;
     private final TrackMapper trackMapper;
@@ -30,6 +33,11 @@ public class ArtistController implements ArtistsApi {
     @Override
     public ResponseEntity<TrackPageDto> listArtistTracks(Long artistId, TrackSortDto sort, Integer page, Integer size) {
         return ResponseEntity.ok(trackService.listArtistTracks(artistId, sort, page, size));
+    }
+
+    @Override
+    public ResponseEntity<AlbumSummaryPageDto> listArtistAlbums(Long artistId, Integer page, Integer size) {
+        return ResponseEntity.ok(albumService.listArtistAlbums(artistId, page, size));
     }
 
     @Override

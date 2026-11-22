@@ -7,6 +7,7 @@ import com.epam.java.specialization.trackservice.client.auth.dto.UserSummaryDto;
 import com.epam.java.specialization.trackservice.exception.CatalogException;
 import com.epam.java.specialization.trackservice.mapper.DateTimeMapping;
 import com.epam.java.specialization.trackservice.model.TrackStatus;
+import com.epam.java.specialization.trackservice.repository.AlbumRepository;
 import com.epam.java.specialization.trackservice.repository.TrackRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,17 +21,20 @@ public class ArtistService {
 
     private final ArtistDirectory artistDirectory;
     private final TrackRepository trackRepository;
+    private final AlbumRepository albumRepository;
 
     @Transactional(readOnly = true)
     public ArtistDto getArtist(Long artistId) {
         int trackCount = Math.toIntExact(trackRepository.countByArtistIdAndStatus(artistId, TrackStatus.PUBLISHED));
+        int albumCount = Math.toIntExact(albumRepository.countByArtistWithTracksIn(artistId, TrackStatus.PUBLISHED));
         ArtistProfiles profiles = artistDirectory.findProfile(artistId);
 
         if (profiles.available()) {
             UserSummaryDto user = profiles.find(artistId)
                     .filter(u -> profiles.isArtist(artistId))
                     .orElseThrow(() -> artistNotFound(artistId));
-            ArtistDto artist = new ArtistDto(artistId, user.getDisplayName(), trackCount, 0, user.getCreatedAt());
+            ArtistDto artist = new ArtistDto(artistId, user.getDisplayName(), trackCount, albumCount,
+                    user.getCreatedAt());
             artist.setAvatarUrl(user.getAvatarUrl());
             return artist;
         }
@@ -38,7 +42,7 @@ public class ArtistService {
         Instant firstTrack = trackRepository.findFirstCreatedAtByArtistId(artistId)
                 .orElseThrow(() -> CatalogException.serviceUnavailable("ARTIST_PROFILE_UNAVAILABLE",
                         "The artist profile cannot be loaded right now. Try again later."));
-        return new ArtistDto(artistId, ArtistProfiles.UNKNOWN_ARTIST, trackCount, 0,
+        return new ArtistDto(artistId, ArtistProfiles.UNKNOWN_ARTIST, trackCount, albumCount,
                 DateTimeMapping.toOffsetDateTime(firstTrack));
     }
 

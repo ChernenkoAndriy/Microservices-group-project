@@ -20,6 +20,12 @@ public interface TrackRepository extends JpaRepository<Track, Long>, JpaSpecific
 
     List<Track> findByArtistIdOrderByCreatedAtAscIdAsc(Long artistId);
 
+    List<Track> findByAlbumIdAndStatusOrderByTrackNumberAscIdAsc(Long albumId, TrackStatus status);
+
+    boolean existsByAlbumIdAndTrackNumber(Long albumId, Integer trackNumber);
+
+    boolean existsByAlbumIdAndTrackNumberAndIdNot(Long albumId, Integer trackNumber, Long id);
+
     /** Atomic increment in the database, so concurrent reports never lose a play. */
     @Modifying(flushAutomatically = true)
     @Query("update Track t set t.playCount = t.playCount + :plays where t.id = :trackId")

@@ -262,10 +262,12 @@ class AuthClientResilienceIntegrationTest {
         }
 
         @Test
-        void notImplementedOperationAnswers501() throws Exception {
+        void unknownAlbumIsAProblem404() throws Exception {
             mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                            .get("/api/v1/albums/{id}", 1))
-                    .andExpect(status().isNotImplemented());
+                            .get("/api/v1/albums/{id}", 999_999))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                    .andExpect(jsonPath("$.code").value("ALBUM_NOT_FOUND"));
         }
     }
 
