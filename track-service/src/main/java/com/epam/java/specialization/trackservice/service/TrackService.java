@@ -235,8 +235,17 @@ public class TrackService {
 
     @Transactional
     public void publish(Long trackId, int durationSeconds) {
+        publish(trackId, durationSeconds, null);
+    }
+
+    /** Publishes the track; a non-null {@code coverUrl} (from streaming-service) replaces the stored one. */
+    @Transactional
+    public void publish(Long trackId, int durationSeconds, String coverUrl) {
         Track track = trackRepository.findById(trackId).orElseThrow(() -> trackNotFound(trackId));
         track.setDurationSeconds(durationSeconds);
+        if (coverUrl != null && !coverUrl.isBlank()) {
+            track.setCoverUrl(coverUrl);
+        }
         boolean firstPublish = false;
         if (!track.isPublished()) {
             track.setStatus(TrackStatus.PUBLISHED);

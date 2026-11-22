@@ -26,7 +26,7 @@ Status values: **done** · **in progress** · **code written, not tested** · **
 | 16 | Container: multi-stage Dockerfile, nginx (SPA fallback, `/api` proxy), `k8s/services/frontend.yaml`, load + verify in cluster | done |
 | 17 | Docs: `docs/FRONTEND.md`, final `STUBS.md` and `DECISIONS.md` | done |
 | O1 | Catalog: `PATCH`/`DELETE /tracks/{id}` + `TrackPublishedEvent` | done |
-| O2 | Streaming: `POST /media/{id}/cover`, catalog picks up `coverUrl` | not started |
+| O2 | Streaming: `POST /media/{id}/cover` (+ public `GET`), catalog picks up `coverUrl` | done (deployed, smoke-tested) |
 | O3 | Notification: preferences GET/PUT, delivery log, template CRUD | not started |
 | O4 | Notification: consume `TrackPublishedEvent`, follows, `UserSnapshot`; email followers | not started |
 | 18 | Wrap-up: restore replicas, `docs/MANUAL_CHECKS.md`, `STATUS: DONE` in WORK_LOG | partly: replicas restored, MANUAL_CHECKS written; `STATUS: DONE` withheld until O2–O4 are done |

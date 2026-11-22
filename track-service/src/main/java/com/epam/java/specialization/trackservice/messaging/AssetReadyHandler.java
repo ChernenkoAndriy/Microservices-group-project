@@ -36,7 +36,7 @@ public class AssetReadyHandler {
             return false;
         }
         try {
-            trackService.publish(event.getTrackId(), event.getDurationSeconds());
+            trackService.publish(event.getTrackId(), event.getDurationSeconds(), event.getCoverUrl());
         } catch (CatalogException e) {
             if (e.getStatus() == HttpStatus.NOT_FOUND) {
                 throw new NonRetryableEventException(e.getMessage(), e);

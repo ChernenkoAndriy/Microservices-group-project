@@ -89,6 +89,11 @@ components:
           minItems: 1
           items:
             $ref: '#/components/schemas/StorageUrl'
+        coverUrl:
+          description: Public path of the cover image, when one was uploaded. The catalog stores it on the track.
+          type: string
+          maxLength: 2048
+          example: /api/v1/media/42/cover?v=1767225600
 
     StorageUrl:
       type: object

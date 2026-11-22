@@ -37,4 +37,4 @@ Each entry: what was decided, why, and the alternatives considered. Entries mark
     parameters as time-only literals in SELECTs.
 16. **Seed Job** is idempotent per album and not part of the kustomization (`kubectl apply -f k8s/services/seed-job.yaml`).
 17. **Frontend deployment** is a NodePort service (30300) with nginx proxying `/api` to `api-gateway:8080`.
-18. **Optional steps O2–O4 were not implemented** (see MANUAL_CHECKS).
+18. **Cover images (O2):** stored in the media bucket under `{trackId}/cover`, served publicly by `GET /api/v1/media/{id}/cover`; `AssetReadySnapshot` got an optional `coverUrl` (re-sent when a cover is uploaded after the audio is READY). Catalog stores it on the track. O3–O4 not implemented yet.

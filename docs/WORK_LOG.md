@@ -5,8 +5,8 @@
 - **Task:** docs/FRONTEND_BRIEF.md + CLAUDE.md + Phase-1 answers.
 - **Branch:** feature/frontend-vaporwave
 - **Steps done:** 1–17, O1. Step 18 partly (replicas restored, MANUAL_CHECKS written).
-- **Not done:** O2 (cover upload), O3 (notification preferences/log/templates), O4 (notification consumes TrackPublishedEvent/follows, emails followers). STATUS: DONE is withheld because of these.
-- **Next step:** O2, then O3, O4; then add `STATUS: DONE` here.
+- **Not done:** O3 (notification preferences/log/templates), O4 (notification consumes TrackPublishedEvent/follows, emails followers). O2 (cover upload) done. STATUS: DONE is withheld because of these.
+- **Next step:** O3, then O4; then add `STATUS: DONE` here.
 - **Pod replica changes not yet restored:** none (`kubectl apply -k k8s-local` run at the end; frontend added, 1 replica). If you scale observability down again, log it below.
 - **How to run Gradle:** `docker run --rm -v spotty-gradle:/root/.gradle -v D:/Microservices-group-project:/work -w /work/<service> eclipse-temurin:25-jdk ./gradlew test --no-daemon --console=plain` (PowerShell). Full suites hang in this container; run single classes.
 

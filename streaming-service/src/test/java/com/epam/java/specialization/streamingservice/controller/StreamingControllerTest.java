@@ -160,6 +160,6 @@ class StreamingControllerTest {
     }
 
     private static TrackInfo track(TrackStatus status) {
-        return TrackInfo.newBuilder().setTrackId(7).setArtistId(1).setStatus(status).build();
+        return TrackInfo.newBuilder().setId(7).setArtistId(1).setStatus(status).build();
     }
 }

@@ -33,14 +33,28 @@ public class TranscodingService {
     private final OutboxWriter outboxWriter;
     private final String assetReadyTopic;
     private final TraceContextCarrier traceContext;
+    private final StreamingStorageService storageService;
 
     public TranscodingService(TranscodingJobRepository jobRepository, OutboxWriter outboxWriter,
                               @Value("${events.topics.asset-ready}") String assetReadyTopic,
-                              TraceContextCarrier traceContext) {
+                              TraceContextCarrier traceContext, StreamingStorageService storageService) {
         this.jobRepository = jobRepository;
         this.outboxWriter = outboxWriter;
         this.assetReadyTopic = assetReadyTopic;
         this.traceContext = traceContext;
+        this.storageService = storageService;
+    }
+
+    /**
+     * After a new cover is stored: tells the catalog again (same event, now with {@code coverUrl}) when the audio is
+     * already READY. Otherwise the cover goes out with the event of the transcoding that is still to finish.
+     */
+    @Transactional
+    public void coverChanged(Long trackId) {
+        jobRepository.findByTrackId(trackId)
+                .filter(job -> job.getStatus() == com.epam.java.specialization.streamingservice.model.TranscodingJobStatus.READY)
+                .ifPresent(job -> emitAssetReady(job, job.getDurationSeconds(),
+                        storageService.storageUrl(StreamingStorageService.masterKey(trackId))));
     }
 
     /** Queues the transcoding of a master that is already in storage. */
@@ -79,7 +93,11 @@ public class TranscodingService {
                 .orElseThrow(() -> new IllegalStateException("Transcoding job " + jobId + " does not exist"));
         Set<String> qualities = new LinkedHashSet<>(List.of(AudioQuality.HIGH.getValue()));
         job.markReady(durationSeconds, qualities);
+        emitAssetReady(job, durationSeconds, storageUrl);
+    }
 
+    private void emitAssetReady(TranscodingJob job, int durationSeconds, String storageUrl) {
+        Long jobId = job.getId();
         UUID eventId = UUID.randomUUID();
         AssetReadySnapshot event = new AssetReadySnapshot(
                 eventId,
@@ -89,6 +107,7 @@ public class TranscodingService {
                 durationSeconds,
                 new LinkedHashSet<>(List.of(AudioQuality.HIGH)),
                 List.of(new StorageUrl(AudioQuality.HIGH, storageUrl)));
+        event.setCoverUrl(storageService.coverUrlOrNull(job.getTrackId()));
         outboxWriter.append(eventId, "TranscodingJob", job.getTrackId(), assetReadyTopic, ASSET_READY_EVENT, event);
         log.info("Transcoding job id={} for track id={} is ready, event id={} is in the outbox",
                 jobId, job.getTrackId(), eventId);
