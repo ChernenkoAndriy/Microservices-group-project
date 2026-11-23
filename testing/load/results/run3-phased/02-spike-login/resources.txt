@@ -1,0 +1,48 @@
+--- 13:18:54
+api-gateway-79c55bd444-mf5kw        27m    223Mi   
+auth-service-75fcc7d548-fcglc       6m     385Mi   
+catalog-service-68c8d9f8b7-ss62w    24m    440Mi   
+--- 13:19:10
+api-gateway-79c55bd444-mf5kw        27m    223Mi   
+auth-service-75fcc7d548-fcglc       6m     385Mi   
+catalog-service-68c8d9f8b7-ss62w    24m    440Mi   
+--- 13:19:26
+api-gateway-79c55bd444-mf5kw        110m   240Mi   
+auth-service-75fcc7d548-fcglc       107m   388Mi   
+catalog-service-68c8d9f8b7-ss62w    32m    439Mi   
+--- 13:19:41
+api-gateway-79c55bd444-mf5kw        110m   240Mi   
+auth-service-75fcc7d548-fcglc       107m   388Mi   
+catalog-service-68c8d9f8b7-ss62w    32m    439Mi   
+--- 13:19:57
+api-gateway-79c55bd444-mf5kw        110m   240Mi   
+auth-service-75fcc7d548-fcglc       107m   388Mi   
+catalog-service-68c8d9f8b7-ss62w    32m    439Mi   
+--- 13:20:14
+api-gateway-79c55bd444-mf5kw        110m   240Mi   
+auth-service-75fcc7d548-fcglc       107m   388Mi   
+catalog-service-68c8d9f8b7-ss62w    32m    439Mi   
+--- 13:20:29
+api-gateway-79c55bd444-mf5kw        570m   322Mi   
+auth-service-75fcc7d548-fcglc       688m   405Mi   
+catalog-service-68c8d9f8b7-ss62w    33m    440Mi   
+--- 13:20:45
+api-gateway-79c55bd444-mf5kw        570m   322Mi   
+auth-service-75fcc7d548-fcglc       688m   405Mi   
+catalog-service-68c8d9f8b7-ss62w    33m    440Mi   
+--- 13:21:01
+api-gateway-79c55bd444-mf5kw        570m   322Mi   
+auth-service-75fcc7d548-fcglc       688m   405Mi   
+catalog-service-68c8d9f8b7-ss62w    33m    440Mi   
+--- 13:21:16
+api-gateway-79c55bd444-mf5kw        319m   338Mi   
+auth-service-75fcc7d548-fcglc       508m   411Mi   
+catalog-service-68c8d9f8b7-ss62w    40m    440Mi   
+--- 13:21:33
+api-gateway-79c55bd444-mf5kw        319m   338Mi   
+auth-service-75fcc7d548-fcglc       508m   411Mi   
+catalog-service-68c8d9f8b7-ss62w    40m    440Mi   
+--- 13:21:52
+api-gateway-79c55bd444-mf5kw        319m   338Mi   
+auth-service-75fcc7d548-fcglc       508m   411Mi   
+catalog-service-68c8d9f8b7-ss62w    40m    440Mi   

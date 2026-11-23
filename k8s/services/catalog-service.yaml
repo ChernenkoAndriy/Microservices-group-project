@@ -39,6 +39,9 @@ spec:
           ports:
             - containerPort: 8082
               name: http
+            # gRPC server (api-contracts/catalog-service/grpc/catalog_internal.proto), called by streaming-service.
+            - containerPort: 9090
+              name: grpc
           env:
             - name: SERVER_PORT
               valueFrom:
@@ -142,3 +145,21 @@ spec:
     - port: 8082
       targetPort: http
       name: http
+---
+# Headless Service for gRPC: DNS returns the IP of every ready catalog pod instead of one virtual IP, so the
+# client's round_robin policy spreads calls over all pods. A ClusterIP Service would pin each long-lived HTTP/2
+# connection, and with it every call, to a single pod.
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service-grpc
+  labels:
+    app: catalog-service
+spec:
+  clusterIP: None
+  selector:
+    app: catalog-service
+  ports:
+    - port: 9090
+      targetPort: grpc
+      name: grpc

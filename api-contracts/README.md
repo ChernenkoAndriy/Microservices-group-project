@@ -23,6 +23,7 @@ api-contracts/
 ├── catalog-service/
 │   ├── openapi.yaml          /api/v1/tracks/**, /api/v1/artists/**, /api/v1/albums/**, /api/v1/genres
 │   ├── internal-openapi.yaml /internal/tracks/** (service-to-service, not routed)
+│   ├── grpc/catalog_internal.proto  gRPC API on port 9090 (service-to-service; client: streaming-service)
 │   └── asyncapi.yaml         sends TrackPublishedEvent, TrackSnapshot; receives AssetReadySnapshot
 ├── library-service/
 │   ├── openapi.yaml          /api/v1/library/**

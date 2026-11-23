@@ -1,0 +1,293 @@
+{
+  "consumer": {
+    "name": "catalog-service"
+  },
+  "interactions": [
+    {
+      "comments": {
+        "testname": "com.epam.java.specialization.trackservice.contract.AuthServiceContractTest.unknownArtistIsShownAsUnknown()",
+        "text": [
+
+        ]
+      },
+      "description": "a batch lookup of an unknown user",
+      "key": "bb371010",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "no user with id 999 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "X-Internal-Token": [
+            "dev-internal-token"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-Internal-Token": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": ".+"
+                }
+              ]
+            }
+          },
+          "query": {
+            "ids": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "\\d+"
+                }
+              ]
+            }
+          }
+        },
+        "method": "GET",
+        "path": "/internal/users",
+        "query": {
+          "ids": [
+            "999"
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "content": [
+
+          ],
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "status": 200
+      },
+      "transport": "http",
+      "type": "Synchronous/HTTP"
+    },
+    {
+      "comments": {
+        "testname": "com.epam.java.specialization.trackservice.contract.AuthServiceContractTest.resolvesArtistNamesAndRoles()",
+        "text": [
+
+        ]
+      },
+      "description": "a batch lookup of existing users",
+      "key": "8bbfa5df",
+      "pending": false,
+      "providerStates": [
+        {
+          "name": "users 7 (ARTIST) and 8 (LISTENER) exist"
+        }
+      ],
+      "request": {
+        "headers": {
+          "X-Internal-Token": [
+            "dev-internal-token"
+          ]
+        },
+        "matchingRules": {
+          "header": {
+            "X-Internal-Token": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": ".+"
+                }
+              ]
+            }
+          },
+          "query": {
+            "ids": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "\\d+"
+                }
+              ]
+            }
+          }
+        },
+        "method": "GET",
+        "path": "/internal/users",
+        "query": {
+          "ids": [
+            "7",
+            "8"
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "content": [
+            {
+              "createdAt": "2026-10-01T10:00:00Z",
+              "displayName": "Artist Seven",
+              "email": "user7@example.com",
+              "id": 7,
+              "role": "ARTIST",
+              "status": "ACTIVE"
+            },
+            {
+              "createdAt": "2026-10-02T10:00:00Z",
+              "displayName": "Listener Eight",
+              "email": "user8@example.com",
+              "id": 8,
+              "role": "LISTENER",
+              "status": "ACTIVE"
+            }
+          ],
+          "contentType": "application/json",
+          "encoded": false
+        },
+        "headers": {
+          "Content-Type": [
+            "application/json"
+          ]
+        },
+        "matchingRules": {
+          "body": {
+            "$[0].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})"
+                }
+              ]
+            },
+            "$[0].displayName": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[0].email": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[0].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "number"
+                }
+              ]
+            },
+            "$[0].role": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "LISTENER|ARTIST|ADMIN"
+                }
+              ]
+            },
+            "$[0].status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "ACTIVE|BLOCKED"
+                }
+              ]
+            },
+            "$[1].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})"
+                }
+              ]
+            },
+            "$[1].displayName": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[1].email": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$[1].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "number"
+                }
+              ]
+            },
+            "$[1].role": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "LISTENER|ARTIST|ADMIN"
+                }
+              ]
+            },
+            "$[1].status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "ACTIVE|BLOCKED"
+                }
+              ]
+            }
+          },
+          "header": {
+            "Content-Type": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "regex",
+                  "regex": "application/json.*"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      },
+      "transport": "http",
+      "type": "Synchronous/HTTP"
+    }
+  ],
+  "metadata": {
+    "pact-jvm": {
+      "version": "4.7.7"
+    },
+    "pactSpecification": {
+      "version": "4.0"
+    }
+  },
+  "provider": {
+    "name": "auth-service"
+  }
+}

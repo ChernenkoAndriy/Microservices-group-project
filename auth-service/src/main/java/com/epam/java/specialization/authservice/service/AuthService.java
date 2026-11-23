@@ -70,6 +70,7 @@ public class AuthService {
                         .to(saved.getEmail())
                         .template(AuthEmailEvent.TemplateEnum.WELCOME)
                         .variables(Map.of("displayName", saved.getUsername())));
+        outboxService.saveUserSnapshot(saved);
 
         return userMapper.toProfile(saved);
     }

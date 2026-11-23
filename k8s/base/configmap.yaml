@@ -61,6 +61,8 @@ data:
 
   AUTH_SERVICE_URL: "http://auth-service:8081"
   CATALOG_SERVICE_URL: "http://catalog-service:8082"
+  # gRPC target of catalog-service for streaming-service: the headless Service, resolved to all pod IPs.
+  CATALOG_GRPC_TARGET: "dns:///catalog-service-grpc:9090"
   STREAMING_SERVICE_URL: "http://streaming-service:8083"
   RECOMMENDATION_SERVICE_URL: "http://recommendation-service:8084"
   NOTIFICATION_SERVICE_URL: "http://notification-service:8085"

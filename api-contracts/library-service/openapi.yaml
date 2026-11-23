@@ -3,8 +3,8 @@ info:
   title: Spotty Library Service API
   version: 1.0.0
   description: |
-    User Library: the listener's own collection, i.e. liked tracks and followed artists
-    (playlists later).
+    User Library: the listener's own collection, i.e. liked tracks, followed artists and
+    private playlists.
 
     Owned by **library-service** (port 8086). All paths are reached through the API gateway.
     Shared conventions are described in `api-contracts/README.md`.
@@ -21,6 +21,8 @@ tags:
     description: Liked / favourite tracks (Scenario 2).
   - name: Follows
     description: Followed artists.
+  - name: Playlists
+    description: The user's own playlists. Private to their owner.
 
 security:
   - bearerAuth: []
@@ -197,12 +199,179 @@ paths:
         '401':
           $ref: '../common/responses.yaml#/Unauthorized'
 
+  /api/v1/library/playlists:
+    get:
+      tags: [Playlists]
+      operationId: listMyPlaylists
+      summary: My playlists
+      description: Sorted by `updatedAt`, most recently changed first.
+      parameters:
+        - $ref: '../common/parameters.yaml#/Page'
+        - $ref: '../common/parameters.yaml#/Size'
+      responses:
+        '200':
+          description: A page of playlists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaylistSummaryPage'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+    post:
+      tags: [Playlists]
+      operationId: createPlaylist
+      summary: Create a playlist
+      description: Creates an empty playlist owned by the caller. A user has at most 200 playlists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlaylistRequest'
+      responses:
+        '201':
+          description: Playlist created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '409':
+          description: The caller already has 200 playlists (`code` = `PLAYLIST_LIMIT_REACHED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
+  /api/v1/library/playlists/{playlistId}:
+    parameters:
+      - $ref: '#/components/parameters/PlaylistId'
+    get:
+      tags: [Playlists]
+      operationId: getPlaylist
+      summary: A playlist with its tracks
+      description: |
+        Only the owner sees a playlist; anyone else gets 404 (`PLAYLIST_NOT_FOUND`).
+        `tracks` holds track ids in playlist order; load the details from the catalog
+        (`GET /api/v1/tracks?ids=...`).
+      responses:
+        '200':
+          description: The playlist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+    patch:
+      tags: [Playlists]
+      operationId: updatePlaylist
+      summary: Rename a playlist or change its description
+      description: Partial update; at least one field is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePlaylistRequest'
+      responses:
+        '200':
+          description: The updated playlist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '400':
+          $ref: '../common/responses.yaml#/BadRequest'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
+    delete:
+      tags: [Playlists]
+      operationId: deletePlaylist
+      summary: Delete a playlist
+      description: Idempotent for the owner; deleting a missing playlist still returns 204.
+      responses:
+        '204':
+          description: The playlist does not exist (any more).
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+
+  /api/v1/library/playlists/{playlistId}/tracks/{trackId}:
+    parameters:
+      - $ref: '#/components/parameters/PlaylistId'
+      - name: trackId
+        in: path
+        required: true
+        schema:
+          $ref: '../common/schemas.yaml#/Id'
+    put:
+      tags: [Playlists]
+      operationId: addPlaylistTrack
+      summary: Add a track to the end of a playlist
+      description: |
+        Idempotent: a track already on the playlist keeps its position. A playlist holds at most
+        500 tracks. The track must be published (checked with catalog-service).
+      responses:
+        '200':
+          description: The playlist with the track.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Playlist'
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          description: No such playlist of the caller (`PLAYLIST_NOT_FOUND`) or no published track (`TRACK_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+        '409':
+          description: The playlist already has 500 tracks (`code` = `PLAYLIST_FULL`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+    delete:
+      tags: [Playlists]
+      operationId: removePlaylistTrack
+      summary: Remove a track from a playlist
+      description: Idempotent; the positions of the following tracks move up by one.
+      responses:
+        '204':
+          description: The track is not on the playlist (any more).
+        '401':
+          $ref: '../common/responses.yaml#/Unauthorized'
+        '404':
+          description: No such playlist of the caller (`PLAYLIST_NOT_FOUND`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '../common/schemas.yaml#/ProblemDetail'
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  parameters:
+    PlaylistId:
+      name: playlistId
+      in: path
+      required: true
+      schema:
+        $ref: '../common/schemas.yaml#/Id'
 
   schemas:
     Like:
@@ -256,3 +425,131 @@ components:
             $ref: '#/components/schemas/Follow'
         page:
           $ref: '../common/schemas.yaml#/PageMetadata'
+
+    PlaylistName:
+      type: string
+      minLength: 1
+      maxLength: 100
+      pattern: '^\S(?:.*\S)?$'
+      example: Songs to cancel plans to
+
+    PlaylistDescription:
+      type: string
+      maxLength: 500
+      example: For when the bus is late and so are you.
+
+    PlaylistTrack:
+      type: object
+      required:
+        - trackId
+        - position
+        - addedAt
+      properties:
+        trackId:
+          $ref: '../common/schemas.yaml#/Id'
+        position:
+          description: One-based position in the playlist.
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 500
+        addedAt:
+          type: string
+          format: date-time
+
+    PlaylistSummary:
+      type: object
+      required:
+        - id
+        - name
+        - trackCount
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        name:
+          $ref: '#/components/schemas/PlaylistName'
+        description:
+          $ref: '#/components/schemas/PlaylistDescription'
+        trackCount:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 500
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PlaylistSummaryPage:
+      type: object
+      required:
+        - items
+        - page
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/PlaylistSummary'
+        page:
+          $ref: '../common/schemas.yaml#/PageMetadata'
+
+    Playlist:
+      type: object
+      required:
+        - id
+        - name
+        - trackCount
+        - tracks
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          $ref: '../common/schemas.yaml#/Id'
+        name:
+          $ref: '#/components/schemas/PlaylistName'
+        description:
+          $ref: '#/components/schemas/PlaylistDescription'
+        trackCount:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 500
+        tracks:
+          description: Ordered by `position`.
+          type: array
+          maxItems: 500
+          items:
+            $ref: '#/components/schemas/PlaylistTrack'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreatePlaylistRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          $ref: '#/components/schemas/PlaylistName'
+        description:
+          $ref: '#/components/schemas/PlaylistDescription'
+
+    UpdatePlaylistRequest:
+      description: At least one field must be present.
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          $ref: '#/components/schemas/PlaylistName'
+        description:
+          $ref: '#/components/schemas/PlaylistDescription'

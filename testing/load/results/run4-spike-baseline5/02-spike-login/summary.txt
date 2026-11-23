@@ -1,0 +1,19 @@
+==== 02 spike: login burst ====
+requests          : 2395 (17.71/s)
+iterations        : 2385 (dropped: 2964)
+failed rate       : 62.67 %
+duration avg/med  : 7055.54 / 4996.34 ms
+duration p90/p95  : 18517.98 / 23423.75 ms
+duration p99/max  : 29289.89 / 34858.38 ms
+checks passed     : 79.02 %
+thresholds:
+  PASS  login_rate_limited: rate>0
+  FAIL  login_5xx: count==0
+  FAIL  checks{scenario:login_spike}: rate>0.99
+  FAIL  login_ok_duration: p(95)<1500
+per phase:
+  phase        reqs    2xx    429    5xx   err  failed%   med ms   p95 ms   p99 ms
+  baseline      149     25      0    124     0    83.22  3913.80 10836.31 11255.70
+  spike        1907     16    816   1075     0    56.37  4855.55 24165.71 29956.54
+  recovery      329     27      0    291    11    91.79  6039.45 14334.65 16342.51
+k6 exited non-zero (a threshold failed or the run aborted)

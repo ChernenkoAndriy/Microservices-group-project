@@ -26,6 +26,41 @@ public class StreamingStorageService {
         return trackId + "/master";
     }
 
+    public static String coverKey(Long trackId) {
+        return trackId + "/cover";
+    }
+
+    public void putBytes(String key, byte[] data, String contentType) throws Exception {
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(key)
+                        .stream(new java.io.ByteArrayInputStream(data), data.length, -1)
+                        .contentType(contentType)
+                        .build());
+    }
+
+    /** Content type of a stored object, or {@code null} when it does not exist. */
+    public String contentTypeOrNull(String key) {
+        try {
+            return minioClient.statObject(StatObjectArgs.builder().bucket(bucketName).object(key).build())
+                    .contentType();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Public path of the stored cover (with a version so browsers refetch after a replacement), or {@code null}. */
+    public String coverUrlOrNull(Long trackId) {
+        try {
+            var stat = minioClient.statObject(
+                    StatObjectArgs.builder().bucket(bucketName).object(coverKey(trackId)).build());
+            return "/api/v1/media/" + trackId + "/cover?v=" + stat.lastModified().toEpochSecond();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public void uploadAudio(String fileName, MultipartFile file) throws Exception {
         try (InputStream inputStream = file.getInputStream()) {
             minioClient.putObject(
@@ -50,6 +85,18 @@ public class StreamingStorageService {
 
     public String storageUrl(String fileName) {
         return "s3://" + bucketName + "/" + fileName;
+    }
+
+    /** {@code length} bytes from {@code offset} on (a byte range of the object). */
+    public InputStream getAudioStream(String fileName, long offset, long length) throws Exception {
+        return minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(fileName)
+                        .offset(offset)
+                        .length(length)
+                        .build()
+        );
     }
 
     public InputStream getAudioStream(String fileName) throws Exception {

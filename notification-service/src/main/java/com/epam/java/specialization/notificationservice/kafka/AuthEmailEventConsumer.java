@@ -1,10 +1,9 @@
 package com.epam.java.specialization.notificationservice.kafka;
 
 import com.epam.java.specialization.notificationservice.event.AuthEmailEvent;
-import com.epam.java.specialization.notificationservice.model.NotificationLog;
 import com.epam.java.specialization.notificationservice.model.ProcessedEvent;
-import com.epam.java.specialization.notificationservice.repository.NotificationLogRepository;
 import com.epam.java.specialization.notificationservice.repository.ProcessedEventRepository;
+import com.epam.java.specialization.notificationservice.service.DeliveryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.BackOff;
@@ -13,13 +12,13 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
-
-import org.springframework.stereotype.Component;
+import java.util.Map;
 
 @Component
 public class AuthEmailEventConsumer {
@@ -27,14 +26,14 @@ public class AuthEmailEventConsumer {
     private static final Logger log = LoggerFactory.getLogger(AuthEmailEventConsumer.class);
 
     private final ProcessedEventRepository processedEventRepository;
-    private final NotificationLogRepository notificationLogRepository;
+    private final DeliveryService deliveryService;
     private final JsonMapper jsonMapper;
 
     public AuthEmailEventConsumer(ProcessedEventRepository processedEventRepository,
-                                  NotificationLogRepository notificationLogRepository,
+                                  DeliveryService deliveryService,
                                   JsonMapper jsonMapper) {
         this.processedEventRepository = processedEventRepository;
-        this.notificationLogRepository = notificationLogRepository;
+        this.deliveryService = deliveryService;
         this.jsonMapper = jsonMapper;
     }
 
@@ -53,7 +52,8 @@ public class AuthEmailEventConsumer {
             return;
         }
 
-        deliver(event, "SENT");
+        deliveryService.deliver(event.getEventId().toString(), event.getTo(), templateCode(event),
+                event.getVariables() == null ? Map.of() : event.getVariables());
         processedEventRepository.save(new ProcessedEvent(event.getEventId().toString(), Instant.now()));
         log.info("Processed {} email to {} eventId={}", event.getTemplate(), event.getTo(), event.getEventId());
     }
@@ -63,22 +63,15 @@ public class AuthEmailEventConsumer {
         log.error("Event exhausted all retries, topic={}", topic);
         try {
             AuthEmailEvent event = deserialize(payload);
-            deliver(event, "FAILED");
+            deliveryService.recordFailure(event.getEventId().toString(), event.getTo(), templateCode(event),
+                    templateCode(event), "The event exhausted all retries");
         } catch (Exception e) {
             log.error("Could not record failed DLT event from topic={}", topic, e);
         }
     }
 
-    private void deliver(AuthEmailEvent event, String status) {
-        // Real email sending (e.g. JavaMailSender) goes here; for now we record the delivery.
-        NotificationLog entry = new NotificationLog();
-        entry.setEventId(event.getEventId().toString());
-        entry.setRecipientEmail(event.getTo());
-        entry.setTemplate(event.getTemplate() != null ? event.getTemplate().getValue() : "UNKNOWN");
-        entry.setSubject(subjectFor(event.getTemplate()));
-        entry.setStatus(status);
-        entry.setCreatedAt(Instant.now());
-        notificationLogRepository.save(entry);
+    private static String templateCode(AuthEmailEvent event) {
+        return event.getTemplate() != null ? event.getTemplate().getValue() : "UNKNOWN";
     }
 
     private AuthEmailEvent deserialize(String payload) {
@@ -87,14 +80,5 @@ public class AuthEmailEventConsumer {
         } catch (JacksonException e) {
             throw new IllegalArgumentException("Cannot deserialize AuthEmailEvent: " + e.getMessage(), e);
         }
-    }
-
-    private static String subjectFor(AuthEmailEvent.TemplateEnum template) {
-        if (template == null) return "Spotty notification";
-        return switch (template) {
-            case WELCOME -> "Welcome to Spotty!";
-            case ACCOUNT_BLOCKED -> "Your Spotty account has been suspended";
-            case ACCOUNT_UNBLOCKED -> "Your Spotty account has been restored";
-        };
     }
 }

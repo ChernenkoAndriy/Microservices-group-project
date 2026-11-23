@@ -1,9 +1,23 @@
 package com.epam.java.specialization.streamingservice.tracing;
 
+import com.epam.java.specialization.grpc.catalog.v1.CatalogInternalServiceGrpc;
+import com.epam.java.specialization.grpc.catalog.v1.GetTrackInfoRequest;
+import com.epam.java.specialization.grpc.catalog.v1.TrackInfo;
+import com.epam.java.specialization.grpc.catalog.v1.TrackStatus;
 import com.epam.java.specialization.streamingservice.outbox.OutboxEventRepository;
 import com.epam.java.specialization.streamingservice.repository.TranscodingJobRepository;
 import com.epam.java.specialization.streamingservice.service.StreamingStorageService;
-import com.github.tomakehurst.wiremock.WireMockServer;
+import io.grpc.ForwardingServerCallListener;
+import io.grpc.Grpc;
+import io.grpc.InsecureServerCredentials;
+import io.grpc.Metadata;
+import io.grpc.Server;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
+import io.grpc.ServerInterceptors;
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,25 +32,24 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.containing;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.get;
-import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
-import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * An upload checks the track's owner in catalog-service over HTTP. The call carries the upload's trace
- * ({@code traceparent}), and the queued job keeps it for the worker.
+ * An upload checks the track's owner in catalog-service over gRPC (GetTrackInfo). The call carries the upload's
+ * trace ({@code traceparent} metadata), and the queued job keeps it for the worker.
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:streaming-upload;MODE=PostgreSQL;DB_CLOSE_DELAY=-1",
-        "catalog-client.internal-token=test-token",
+        "catalog-grpc.internal-token=test-token",
 })
 @AutoConfigureMockMvc
 @AutoConfigureTracing
@@ -46,20 +59,25 @@ class MediaUploadTraceTest {
     private static final String TRACEPARENT = "00-" + TRACE_ID + "-00f067aa0ba902b7-01";
     private static final long ARTIST_ID = 7L;
 
-    static final WireMockServer catalogService = new WireMockServer(wireMockConfig().dynamicPort());
+    private static final Metadata.Key<String> TRACEPARENT_KEY =
+            Metadata.Key.of("traceparent", Metadata.ASCII_STRING_MARSHALLER);
+    private static final Metadata.Key<String> INTERNAL_TOKEN_KEY =
+            Metadata.Key.of("x-internal-token", Metadata.ASCII_STRING_MARSHALLER);
 
-    static {
-        catalogService.start();
-    }
+    /** Artist id per track id known to the fake catalog-service. */
+    static final Map<Long, Long> tracks = new ConcurrentHashMap<>();
+    /** Every GetTrackInfo call received: the requested track id and the call's metadata. */
+    static final List<Map.Entry<Long, Metadata>> calls = new CopyOnWriteArrayList<>();
+    static final Server catalogService = startCatalogService();
 
     @DynamicPropertySource
-    static void catalogServiceUrl(DynamicPropertyRegistry registry) {
-        registry.add("catalog-client.base-url", catalogService::baseUrl);
+    static void catalogServiceTarget(DynamicPropertyRegistry registry) {
+        registry.add("spring.grpc.client.channel.catalog.target", () -> "localhost:" + catalogService.getPort());
     }
 
     @AfterAll
     static void stopCatalogService() {
-        catalogService.stop();
+        catalogService.shutdownNow();
     }
 
     @Autowired
@@ -73,7 +91,8 @@ class MediaUploadTraceTest {
 
     @BeforeEach
     void cleanUp() {
-        catalogService.resetAll();
+        tracks.clear();
+        calls.clear();
         outboxRepository.deleteAll();
         jobRepository.deleteAll();
     }
@@ -85,9 +104,11 @@ class MediaUploadTraceTest {
         mockMvc.perform(upload(5).header("traceparent", TRACEPARENT).header("X-User-Id", ARTIST_ID))
                 .andExpect(status().isAccepted());
 
-        catalogService.verify(getRequestedFor(urlPathEqualTo("/internal/tracks/5"))
-                .withHeader("traceparent", containing(TRACE_ID))
-                .withHeader("X-Internal-Token", equalTo("test-token")));
+        assertThat(calls).hasSize(1);
+        assertThat(calls.getFirst().getKey()).isEqualTo(5L);
+        Metadata headers = calls.getFirst().getValue();
+        assertThat(headers.get(TRACEPARENT_KEY)).contains(TRACE_ID);
+        assertThat(headers.get(INTERNAL_TOKEN_KEY)).isEqualTo("test-token");
         String jobTraceparent = jobRepository.findByTrackId(5L).orElseThrow().getTraceparent();
         assertThat(jobTraceparent).startsWith("00-" + TRACE_ID + "-").isNotEqualTo(TRACEPARENT);
     }
@@ -103,8 +124,7 @@ class MediaUploadTraceTest {
 
     @Test
     void unknownTrackIsNotFound() throws Exception {
-        catalogService.stubFor(get(urlPathEqualTo("/internal/tracks/8")).willReturn(aResponse().withStatus(404)));
-
+        // Track 8 is unknown to the fake catalog-service, which answers NOT_FOUND.
         mockMvc.perform(upload(8).header("X-User-Id", ARTIST_ID)).andExpect(status().isNotFound());
     }
 
@@ -112,7 +132,7 @@ class MediaUploadTraceTest {
     void uploadWithoutAUserIsUnauthorized() throws Exception {
         mockMvc.perform(upload(5)).andExpect(status().isUnauthorized());
 
-        catalogService.verify(0, getRequestedFor(urlPathEqualTo("/internal/tracks/5")));
+        assertThat(calls).isEmpty();
     }
 
     private static MockMultipartHttpServletRequestBuilder upload(long trackId) {
@@ -121,7 +141,48 @@ class MediaUploadTraceTest {
     }
 
     private static void stubTrack(long trackId, long artistId) {
-        catalogService.stubFor(get(urlPathEqualTo("/internal/tracks/" + trackId)).willReturn(okJson(
-                "{\"id\":" + trackId + ",\"artistId\":" + artistId + ",\"status\":\"AWAITING_AUDIO\"}")));
+        tracks.put(trackId, artistId);
+    }
+
+    /** A fake catalog-service: GetTrackInfo answers from {@link #tracks} and records every call. */
+    private static Server startCatalogService() {
+        var service = new CatalogInternalServiceGrpc.CatalogInternalServiceImplBase() {
+            @Override
+            public void getTrackInfo(GetTrackInfoRequest request, StreamObserver<TrackInfo> responseObserver) {
+                Long artistId = tracks.get(request.getTrackId());
+                if (artistId == null) {
+                    responseObserver.onError(Status.NOT_FOUND.asRuntimeException());
+                    return;
+                }
+                responseObserver.onNext(TrackInfo.newBuilder().setId(request.getTrackId()).setArtistId(artistId)
+                        .setStatus(TrackStatus.TRACK_STATUS_AWAITING_AUDIO).build());
+                responseObserver.onCompleted();
+            }
+        };
+        ServerInterceptor recordCalls = new ServerInterceptor() {
+            @Override
+            public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+                                                                         Metadata headers,
+                                                                         ServerCallHandler<ReqT, RespT> next) {
+                return new ForwardingServerCallListener.SimpleForwardingServerCallListener<>(
+                        next.startCall(call, headers)) {
+                    @Override
+                    public void onMessage(ReqT message) {
+                        if (message instanceof GetTrackInfoRequest request) {
+                            calls.add(Map.entry(request.getTrackId(), headers));
+                        }
+                        super.onMessage(message);
+                    }
+                };
+            }
+        };
+        try {
+            return Grpc.newServerBuilderForPort(0, InsecureServerCredentials.create())
+                    .addService(ServerInterceptors.intercept(service, recordCalls))
+                    .build()
+                    .start();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

@@ -1,4 +1,6 @@
-FROM eclipse-temurin:25-jdk-alpine AS builder
+# The builder runs on glibc (Ubuntu), not Alpine: the protoc-gen-grpc-java plugin that generates the gRPC code
+# is a glibc binary. The runtime image below stays on Alpine.
+FROM eclipse-temurin:25-jdk AS builder
 WORKDIR /build
 
 COPY gradlew .

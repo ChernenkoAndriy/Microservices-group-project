@@ -1,0 +1,52 @@
+--- 13:06:04
+api-gateway-79c55bd444-mf5kw        562m   257Mi   
+auth-service-75fcc7d548-fcglc       578m   347Mi   
+catalog-service-68c8d9f8b7-ss62w    640m   410Mi   
+--- 13:06:20
+api-gateway-79c55bd444-mf5kw        12m    254Mi   
+auth-service-75fcc7d548-fcglc       20m    347Mi   
+catalog-service-68c8d9f8b7-ss62w    137m   410Mi   
+--- 13:06:36
+api-gateway-79c55bd444-mf5kw        12m    254Mi   
+auth-service-75fcc7d548-fcglc       20m    347Mi   
+catalog-service-68c8d9f8b7-ss62w    137m   410Mi   
+--- 13:06:51
+api-gateway-79c55bd444-mf5kw        12m    254Mi   
+auth-service-75fcc7d548-fcglc       20m    347Mi   
+catalog-service-68c8d9f8b7-ss62w    137m   410Mi   
+--- 13:07:07
+api-gateway-79c55bd444-mf5kw        12m    254Mi   
+auth-service-75fcc7d548-fcglc       20m    347Mi   
+catalog-service-68c8d9f8b7-ss62w    137m   410Mi   
+--- 13:07:22
+api-gateway-79c55bd444-mf5kw        386m   301Mi   
+auth-service-75fcc7d548-fcglc       724m   381Mi   
+catalog-service-68c8d9f8b7-ss62w    55m    410Mi   
+--- 13:07:38
+api-gateway-79c55bd444-mf5kw        386m   301Mi   
+auth-service-75fcc7d548-fcglc       724m   381Mi   
+catalog-service-68c8d9f8b7-ss62w    55m    410Mi   
+--- 13:07:53
+api-gateway-79c55bd444-mf5kw        386m   301Mi   
+auth-service-75fcc7d548-fcglc       724m   381Mi   
+catalog-service-68c8d9f8b7-ss62w    55m    410Mi   
+--- 13:08:09
+api-gateway-79c55bd444-mf5kw        386m   301Mi   
+auth-service-75fcc7d548-fcglc       724m   381Mi   
+catalog-service-68c8d9f8b7-ss62w    55m    410Mi   
+--- 13:08:24
+api-gateway-79c55bd444-mf5kw        344m   314Mi   
+auth-service-75fcc7d548-fcglc       641m   390Mi   
+catalog-service-68c8d9f8b7-ss62w    82m    411Mi   
+--- 13:08:40
+api-gateway-79c55bd444-mf5kw        344m   314Mi   
+auth-service-75fcc7d548-fcglc       641m   390Mi   
+catalog-service-68c8d9f8b7-ss62w    82m    411Mi   
+--- 13:08:55
+api-gateway-79c55bd444-mf5kw        344m   314Mi   
+auth-service-75fcc7d548-fcglc       641m   390Mi   
+catalog-service-68c8d9f8b7-ss62w    82m    411Mi   
+--- 13:09:10
+api-gateway-79c55bd444-mf5kw        344m   314Mi   
+auth-service-75fcc7d548-fcglc       641m   390Mi   
+catalog-service-68c8d9f8b7-ss62w    82m    411Mi   

@@ -16,6 +16,21 @@ spring:
     username: ${CLICKHOUSE_USER:spotty_clickhouse_user}
     password: ${CLICKHOUSE_PASSWORD:your_secure_clickhouse_password}
     driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: recommendation-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        # Fail fast while Kafka is down: the feed is returned anyway, only the impressions are lost.
+        max.block.ms: 2000
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
 
 logging:
   # One JSON object per line (logstash format) with the MDC values, so traceId and spanId are fields of every
@@ -47,3 +62,11 @@ management:
   observations:
     annotations:
       enabled: true
+
+# Kafka: consumes likes (library) and track snapshots (catalog), sends and consumes its own feed-served events.
+events:
+  topics:
+    track-likes: library.track-likes
+    track-snapshots: catalog.track.snapshot
+    feed-served: recommendation.feed.served
+    partitions: 3

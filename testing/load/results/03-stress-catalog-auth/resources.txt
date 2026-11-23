@@ -1,0 +1,188 @@
+--- 14:01:00
+api-gateway-79c55bd444-mf5kw        22m    340Mi   
+auth-service-75fcc7d548-fcglc       27m    417Mi   
+catalog-service-68c8d9f8b7-ss62w    31m    456Mi   
+--- 14:01:16
+api-gateway-79c55bd444-mf5kw        10m    340Mi   
+auth-service-75fcc7d548-fcglc       23m    417Mi   
+catalog-service-68c8d9f8b7-ss62w    40m    455Mi   
+--- 14:01:36
+api-gateway-79c55bd444-mf5kw        10m    340Mi   
+auth-service-75fcc7d548-fcglc       23m    417Mi   
+catalog-service-68c8d9f8b7-ss62w    40m    455Mi   
+--- 14:01:53
+api-gateway-79c55bd444-mf5kw        10m    340Mi   
+auth-service-75fcc7d548-fcglc       23m    417Mi   
+catalog-service-68c8d9f8b7-ss62w    40m    455Mi   
+--- 14:02:11
+api-gateway-79c55bd444-mf5kw        10m    340Mi   
+auth-service-75fcc7d548-fcglc       23m    417Mi   
+catalog-service-68c8d9f8b7-ss62w    40m    455Mi   
+--- 14:02:26
+api-gateway-79c55bd444-mf5kw        172m   342Mi   
+auth-service-75fcc7d548-fcglc       332m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    132m   456Mi   
+--- 14:02:45
+api-gateway-79c55bd444-mf5kw        172m   342Mi   
+auth-service-75fcc7d548-fcglc       332m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    132m   456Mi   
+--- 14:03:09
+api-gateway-79c55bd444-mf5kw        172m   342Mi   
+auth-service-75fcc7d548-fcglc       332m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    132m   456Mi   
+--- 14:03:27
+api-gateway-79c55bd444-mf5kw        290m   360Mi   
+auth-service-75fcc7d548-fcglc       125m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    342m   458Mi   
+--- 14:03:39
+api-gateway-79c55bd444-mf5kw        290m   360Mi   
+auth-service-75fcc7d548-fcglc       125m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    342m   458Mi   
+--- 14:03:43
+api-gateway-79c55bd444-mf5kw        290m   360Mi   
+auth-service-75fcc7d548-fcglc       125m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    342m   458Mi   
+--- 14:03:54
+api-gateway-79c55bd444-mf5kw        290m   360Mi   
+auth-service-75fcc7d548-fcglc       125m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    342m   458Mi   
+--- 14:03:58
+api-gateway-79c55bd444-mf5kw        290m   360Mi   
+auth-service-75fcc7d548-fcglc       125m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    342m   458Mi   
+--- 14:04:10
+api-gateway-79c55bd444-mf5kw        290m   360Mi   
+auth-service-75fcc7d548-fcglc       125m   417Mi   
+catalog-service-68c8d9f8b7-ss62w    342m   458Mi   
+--- 14:04:14
+api-gateway-79c55bd444-mf5kw        343m   364Mi   
+auth-service-75fcc7d548-fcglc       239m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    509m   461Mi   
+--- 14:04:27
+api-gateway-79c55bd444-mf5kw        343m   364Mi   
+auth-service-75fcc7d548-fcglc       239m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    509m   461Mi   
+--- 14:04:29
+api-gateway-79c55bd444-mf5kw        343m   364Mi   
+auth-service-75fcc7d548-fcglc       239m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    509m   461Mi   
+--- 14:04:51
+--- 14:04:52
+api-gateway-79c55bd444-mf5kw        343m   364Mi   
+auth-service-75fcc7d548-fcglc       239m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    509m   461Mi   
+api-gateway-79c55bd444-mf5kw        343m   364Mi   
+auth-service-75fcc7d548-fcglc       239m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    509m   461Mi   
+--- 14:05:11
+--- 14:05:13
+api-gateway-79c55bd444-mf5kw        343m   364Mi   
+auth-service-75fcc7d548-fcglc       239m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    509m   461Mi   
+api-gateway-79c55bd444-mf5kw        343m   364Mi   
+auth-service-75fcc7d548-fcglc       239m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    509m   461Mi   
+--- 14:05:30
+api-gateway-79c55bd444-mf5kw        457m   382Mi   
+auth-service-75fcc7d548-fcglc       177m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    464m   467Mi   
+--- 14:05:30
+api-gateway-79c55bd444-mf5kw        457m   382Mi   
+auth-service-75fcc7d548-fcglc       177m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    464m   467Mi   
+--- 14:05:45
+api-gateway-79c55bd444-mf5kw        457m   382Mi   
+auth-service-75fcc7d548-fcglc       177m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    464m   467Mi   
+--- 14:05:46
+api-gateway-79c55bd444-mf5kw        457m   382Mi   
+auth-service-75fcc7d548-fcglc       177m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    464m   467Mi   
+--- 14:06:01
+api-gateway-79c55bd444-mf5kw        457m   382Mi   
+auth-service-75fcc7d548-fcglc       177m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    464m   467Mi   
+--- 14:06:03
+api-gateway-79c55bd444-mf5kw        457m   382Mi   
+auth-service-75fcc7d548-fcglc       177m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    464m   467Mi   
+--- 14:06:17
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:06:20
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:06:32
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:06:40
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:06:49
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:06:56
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:07:08
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:07:12
+api-gateway-79c55bd444-mf5kw        601m   418Mi   
+auth-service-75fcc7d548-fcglc       265m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    546m   474Mi   
+--- 14:07:25
+api-gateway-79c55bd444-mf5kw        593m   459Mi   
+auth-service-75fcc7d548-fcglc       212m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    407m   475Mi   
+--- 14:07:28
+api-gateway-79c55bd444-mf5kw        593m   459Mi   
+auth-service-75fcc7d548-fcglc       212m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    407m   475Mi   
+--- 14:07:41
+api-gateway-79c55bd444-mf5kw        593m   459Mi   
+auth-service-75fcc7d548-fcglc       212m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    407m   475Mi   
+--- 14:07:45
+api-gateway-79c55bd444-mf5kw        593m   459Mi   
+auth-service-75fcc7d548-fcglc       212m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    407m   475Mi   
+--- 14:07:57
+api-gateway-79c55bd444-mf5kw        593m   459Mi   
+auth-service-75fcc7d548-fcglc       212m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    407m   475Mi   
+--- 14:08:01
+api-gateway-79c55bd444-mf5kw        593m   459Mi   
+auth-service-75fcc7d548-fcglc       212m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    407m   475Mi   
+--- 14:08:13
+api-gateway-79c55bd444-mf5kw        593m   459Mi   
+auth-service-75fcc7d548-fcglc       212m   418Mi   
+catalog-service-68c8d9f8b7-ss62w    407m   475Mi   
+--- 14:08:17
+api-gateway-79c55bd444-mf5kw        644m   572Mi   
+auth-service-75fcc7d548-fcglc       202m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    401m   476Mi   
+--- 14:08:29
+api-gateway-79c55bd444-mf5kw        644m   572Mi   
+auth-service-75fcc7d548-fcglc       202m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    401m   476Mi   
+--- 14:08:45
+api-gateway-79c55bd444-mf5kw        644m   572Mi   
+auth-service-75fcc7d548-fcglc       202m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    401m   476Mi   
+--- 14:09:02
+api-gateway-79c55bd444-mf5kw        644m   572Mi   
+auth-service-75fcc7d548-fcglc       202m   419Mi   
+catalog-service-68c8d9f8b7-ss62w    401m   476Mi   
+--- 14:09:18
+api-gateway-79c55bd444-mf5kw        249m   605Mi   
+auth-service-75fcc7d548-fcglc       85m    418Mi   
+catalog-service-68c8d9f8b7-ss62w    145m   475Mi   

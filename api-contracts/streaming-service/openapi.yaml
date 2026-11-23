@@ -114,6 +114,30 @@ paths:
           $ref: '#/components/responses/PayloadTooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
+    get:
+      tags: [Media upload]
+      operationId: getCover
+      summary: Download the cover image
+      description: Public. The image exactly as uploaded; `coverUrl` points here.
+      security: []
+      responses:
+        '200':
+          description: The cover image.
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '../common/responses.yaml#/NotFound'
 
   /api/v1/media/{trackId}/status:
     parameters:

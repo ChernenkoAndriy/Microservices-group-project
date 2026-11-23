@@ -31,6 +31,7 @@ dependencies {
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.springframework.boot:spring-boot-starter-kafka")
+    implementation("org.springframework.boot:spring-boot-starter-mail")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")

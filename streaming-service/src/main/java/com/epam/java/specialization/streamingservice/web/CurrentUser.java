@@ -25,6 +25,19 @@ public class CurrentUser {
         }
     }
 
+    /** The caller's id, or {@code null} when the request names no valid user (for example a signed stream URL). */
+    public Long findId() {
+        String header = request().getHeader(USER_ID_HEADER);
+        if (header == null || header.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.valueOf(header.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private static HttpServletRequest request() {
         return ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
     }

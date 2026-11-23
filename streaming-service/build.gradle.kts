@@ -1,8 +1,11 @@
+import com.google.protobuf.gradle.id
+
 plugins {
     java
     id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.openapi.generator") version "7.25.0"
+    id("com.google.protobuf") version "0.9.5"
 }
 
 group = "com.epam.java.specialization"
@@ -30,14 +33,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-kafka")
     implementation("org.springframework.boot:spring-boot-starter-opentelemetry")
     implementation("org.springframework.boot:spring-boot-starter-aspectj")
-    implementation("org.springframework.boot:spring-boot-starter-restclient")
+    implementation("org.springframework.boot:spring-boot-starter-grpc-client")
     implementation("io.minio:minio:8.5.10")
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
-    testImplementation("org.wiremock:wiremock-standalone:3.13.2")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
@@ -99,32 +101,31 @@ val openApiGenerateEvents by tasks.registering(org.openapitools.generator.gradle
     ))
 }
 
-// Client for catalog-service's internal API (api-contracts/catalog-service/internal-openapi.yaml).
-val openApiGenerateCatalogClient by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
-    generatorName.set("spring")
-    library.set("spring-http-interface")
-    inputSpec.set("$rootDir/../api-contracts/catalog-service/internal-openapi.yaml")
-    outputDir.set(layout.buildDirectory.dir("generated/catalog-client").get().asFile.path)
-    apiPackage.set("com.epam.java.specialization.streamingservice.client.catalog.api")
-    modelPackage.set("com.epam.java.specialization.streamingservice.client.catalog.dto")
-    modelNameSuffix.set("Dto")
-    typeMappings.set(mapOf("URI" to "String"))
-    configOptions.set(mapOf(
-        "useSpringBoot4" to "true",
-        "useJackson3" to "true",
-        "useTags" to "true",
-        "openApiNullable" to "false",
-        "documentationProvider" to "none",
-        "annotationLibrary" to "none",
-        "generateJsonIncludeAnnotations" to "false",
-        "generateJsonSetterNullsAnnotations" to "false",
-        "configPackage" to "org.openapitools.configuration.catalogclient",
-    ))
-}
-
 sourceSets.main {
     java.srcDir(layout.buildDirectory.dir("generated/openapi/src/main/java"))
     java.srcDir(layout.buildDirectory.dir("generated/events/src/main/java"))
-    java.srcDir(layout.buildDirectory.dir("generated/catalog-client/src/main/java"))
 }
-tasks.compileJava { dependsOn(tasks.openApiGenerate, openApiGenerateEvents, openApiGenerateCatalogClient) }
+
+// gRPC client of catalog-service: Java classes generated from the shared contract
+// api-contracts/catalog-service/grpc/*.proto into build/. protoc and the grpc-java plugin use the versions managed
+// by the Spring Boot BOM, the same as the runtime jars.
+val protobufVersion = dependencyManagement.importedProperties["protobuf-java.version"]
+val grpcVersion = dependencyManagement.importedProperties["grpc-java.version"]
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:$protobufVersion" }
+    plugins {
+        id("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion" }
+    }
+    generateProtoTasks {
+        all().configureEach {
+            plugins { maybeCreate("grpc").option("@generated=omit") }
+        }
+    }
+}
+
+sourceSets.main {
+    proto { srcDir("$rootDir/../api-contracts/catalog-service/grpc") }
+}
+
+tasks.compileJava { dependsOn(tasks.openApiGenerate, openApiGenerateEvents) }

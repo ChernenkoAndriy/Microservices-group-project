@@ -159,6 +159,7 @@ gateway:
           - /api/v1/charts/top
           # Protected by a signed stream token that streaming-service checks, not by the JWT.
           - /api/v1/streaming/{trackId}
+          - /api/v1/media/{trackId}/cover
           - /actuator/health/**
           - /actuator/info
           - /actuator/prometheus

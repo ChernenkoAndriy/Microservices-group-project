@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -15,6 +17,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -47,6 +50,11 @@ public class Track {
     @BatchSize(size = 100)
     private List<Genre> genres = new ArrayList<>();
 
+    /** The album the track belongs to, or {@code null} for a standalone track. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "album_id")
+    private Album album;
+
     private Integer trackNumber;
 
     @Column(nullable = false)
@@ -64,6 +72,11 @@ public class Track {
     private TrackStatus status = TrackStatus.AWAITING_AUDIO;
 
     private Instant publishedAt;
+
+    /** Plays reported by streaming-service over gRPC (ReportPlays). The default lets ddl-auto add the column to existing rows. */
+    @ColumnDefault("0")
+    @Column(nullable = false)
+    private long playCount;
 
     @CreationTimestamp
     @Column(updatable = false)

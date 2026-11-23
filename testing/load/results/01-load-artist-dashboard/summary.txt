@@ -1,0 +1,15 @@
+==== 01 load: artist dashboard ====
+requests          : 1856 (8.48/s)
+iterations        : 347 (dropped: 0)
+failed rate       : 0.81 %
+duration avg/med  : 1378.13 / 863.80 ms
+duration p90/p95  : 2084.83 / 4047.57 ms
+duration p99/max  : 14066.86 / 25979.12 ms
+checks passed     : 97.99 %
+thresholds:
+  FAIL  checks{scenario:artist_dashboard}: rate>0.99
+  FAIL  http_req_duration{scenario:artist_dashboard}: p(99)<1000
+  FAIL  http_req_duration{scenario:artist_dashboard}: p(95)<500
+  PASS  http_req_failed{scenario:artist_dashboard}: rate<0.01
+  FAIL  group_duration{group:::dashboard page}: p(95)<2000
+k6 exited non-zero (a threshold failed or the run aborted)

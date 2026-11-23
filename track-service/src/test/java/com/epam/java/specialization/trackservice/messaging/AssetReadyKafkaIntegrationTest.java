@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doCallRealMethod;
@@ -113,7 +114,7 @@ class AssetReadyKafkaIntegrationTest {
         send(markerTrackId, event(markerEventId, markerTrackId, 60));
         await().atMost(TIMEOUT).until(() -> processedEventRepository.existsById(markerEventId));
 
-        verify(trackService, times(1)).publish(eq(trackId), anyInt());
+        verify(trackService, times(1)).publish(eq(trackId), anyInt(), any());
         assertThat(processedEventRepository.findAll())
                 .filteredOn(processed -> processed.getEventId().equals(eventId))
                 .hasSize(1);
@@ -127,12 +128,12 @@ class AssetReadyKafkaIntegrationTest {
         UUID eventId = UUID.randomUUID();
         doThrow(new TransientDataAccessResourceException("catalog-db is down"))
                 .doCallRealMethod()
-                .when(trackService).publish(eq(trackId), anyInt());
+                .when(trackService).publish(eq(trackId), anyInt(), any());
 
         send(trackId, event(eventId, trackId, 200));
 
         await().atMost(TIMEOUT).until(() -> processedEventRepository.existsById(eventId));
-        verify(trackService, times(2)).publish(eq(trackId), anyInt());
+        verify(trackService, times(2)).publish(eq(trackId), anyInt(), any());
         assertThat(trackRepository.findById(trackId).orElseThrow().getStatus()).isEqualTo(TrackStatus.PUBLISHED);
         assertThat(records(RETRY_TOPICS.getFirst(), String.valueOf(trackId), TIMEOUT)).hasSize(1);
         assertThat(dltRecordWithKey(trackId, Duration.ofSeconds(2))).isEmpty();
@@ -143,7 +144,7 @@ class AssetReadyKafkaIntegrationTest {
         Long trackId = awaitingAudioTrack();
         UUID eventId = UUID.randomUUID();
         doThrow(new TransientDataAccessResourceException("catalog-db is down"))
-                .when(trackService).publish(eq(trackId), anyInt());
+                .when(trackService).publish(eq(trackId), anyInt(), any());
 
         send(trackId, event(eventId, trackId, 200));
 
@@ -155,10 +156,10 @@ class AssetReadyKafkaIntegrationTest {
             assertThat(records(retryTopic, String.valueOf(trackId), TIMEOUT)).as(retryTopic).hasSize(1);
         }
         // The first delivery and one per retry topic: 4 attempts in all.
-        verify(trackService, times(4)).publish(eq(trackId), anyInt());
+        verify(trackService, times(4)).publish(eq(trackId), anyInt(), any());
         assertThat(processedEventRepository.existsById(eventId)).isFalse();
         assertThat(trackRepository.findById(trackId).orElseThrow().getStatus()).isEqualTo(TrackStatus.AWAITING_AUDIO);
-        doCallRealMethod().when(trackService).publish(eq(trackId), anyInt());
+        doCallRealMethod().when(trackService).publish(eq(trackId), anyInt(), any());
     }
 
     @Test

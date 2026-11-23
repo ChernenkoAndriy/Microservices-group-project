@@ -8,6 +8,18 @@ spring:
       fail-on-unknown-properties: true
   application:
     name: track-service
+  # gRPC server (catalog_internal.proto) on its own port, next to the REST API on 8082.
+  grpc:
+    server:
+      port: ${GRPC_SERVER_PORT:9090}
+      # Rotate long-lived HTTP/2 connections so clients discover newly scaled pods.
+      keepalive:
+        connection:
+          max-age: 2m
+          grace-period: 30s
+      # Server reflection lets grpcurl and Postman list the services and messages without the .proto file.
+      reflection:
+        enabled: ${GRPC_REFLECTION_ENABLED:true}
   jpa:
     hibernate:
       ddl-auto: update
@@ -34,6 +46,10 @@ spring:
       acks: all
       properties:
         enable.idempotence: true
+        # Fail fast while Kafka is down; the event stays in the outbox and the relay tries again.
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
     listener:
       # The offset is committed only after the record was handled (or forwarded to a retry/dead letter topic).
       ack-mode: record
@@ -43,6 +59,8 @@ spring:
 events:
   topics:
     asset-ready: streaming.asset.ready
+    track-snapshot: catalog.track.snapshot
+    track-published: catalog.track.published
     partitions: 3
   consumer:
     retry:
@@ -50,6 +68,13 @@ events:
       delay-ms: 1000
       multiplier: 2
       max-delay-ms: 10000
+
+# Sends the track events written to the outbox (OutboxRelay), oldest first.
+outbox:
+  relay:
+    poll-interval-ms: 1000
+    batch-size: 50
+    send-timeout-ms: 10000
 
 internal-api:
   token: ${INTERNAL_API_TOKEN:dev-internal-token}

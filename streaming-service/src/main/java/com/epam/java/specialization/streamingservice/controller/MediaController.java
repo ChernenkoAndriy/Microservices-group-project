@@ -2,6 +2,9 @@ package com.epam.java.specialization.streamingservice.controller;
 
 import com.epam.java.specialization.streamingservice.api.MediaUploadApi;
 import com.epam.java.specialization.streamingservice.api.dto.AudioQualityDto;
+import com.epam.java.specialization.streamingservice.api.dto.CoverUploadResponseDto;
+import com.epam.java.specialization.streamingservice.service.CoverImage;
+import com.epam.java.specialization.streamingservice.web.StreamingException;
 import com.epam.java.specialization.streamingservice.api.dto.TranscodingJobStatusDto;
 import com.epam.java.specialization.streamingservice.api.dto.TranscodingStatusDto;
 import com.epam.java.specialization.streamingservice.client.TrackOwnership;
@@ -25,6 +28,8 @@ import java.util.stream.Collectors;
 
 @RestController
 public class MediaController implements MediaUploadApi {
+
+    private static final long MAX_COVER_BYTES = 10L * 1024 * 1024;
 
     private final StreamingStorageService storageService;
     private final TranscodingService transcodingService;
@@ -52,6 +57,54 @@ public class MediaController implements MediaUploadApi {
         metrics.recordUploadedMaster(file.getSize());
         TranscodingJob job = transcodingService.queue(trackId, file.getOriginalFilename(), file.getSize());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(toDto(job));
+    }
+
+    @Override
+    public ResponseEntity<CoverUploadResponseDto> uploadCover(Long trackId, MultipartFile file) {
+        trackOwnership.requireOwner(trackId, currentUser.requireId());
+        if (file.getSize() > MAX_COVER_BYTES) {
+            throw new StreamingException(HttpStatus.CONTENT_TOO_LARGE, "COVER_TOO_LARGE",
+                    "The cover must be at most 10 MB");
+        }
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (java.io.IOException e) {
+            throw new StreamingException(HttpStatus.BAD_REQUEST, "INVALID_IMAGE", "The file could not be read");
+        }
+        CoverImage image = CoverImage.inspect(bytes).orElseThrow(() -> new StreamingException(
+                HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_IMAGE_TYPE", "The cover must be a JPEG, PNG or WebP image"));
+        if (!image.isSquareWithinLimits()) {
+            throw new StreamingException(HttpStatus.BAD_REQUEST, "INVALID_IMAGE_DIMENSIONS",
+                    "The cover must be square, 500-5000 px per side (got " + image.width() + "x" + image.height() + ")");
+        }
+        try {
+            storageService.putBytes(StreamingStorageService.coverKey(trackId), bytes, image.contentType());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not store the cover", e);
+        }
+        transcodingService.coverChanged(trackId);
+        String url = storageService.coverUrlOrNull(trackId);
+        CoverUploadResponseDto body = new CoverUploadResponseDto(trackId, url,
+                OffsetDateTime.now(ZoneOffset.UTC));
+        return ResponseEntity.status(HttpStatus.CREATED).body(body);
+    }
+
+    @Override
+    public ResponseEntity<org.springframework.core.io.Resource> getCover(Long trackId) {
+        String type = storageService.contentTypeOrNull(StreamingStorageService.coverKey(trackId));
+        if (type == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Track " + trackId + " has no cover");
+        }
+        try {
+            byte[] bytes = storageService.getAudioStream(StreamingStorageService.coverKey(trackId)).readAllBytes();
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.parseMediaType(type))
+                    .cacheControl(org.springframework.http.CacheControl.maxAge(java.time.Duration.ofDays(365)).cachePublic())
+                    .body(new org.springframework.core.io.ByteArrayResource(bytes));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not read the cover", e);
+        }
     }
 
     @Override

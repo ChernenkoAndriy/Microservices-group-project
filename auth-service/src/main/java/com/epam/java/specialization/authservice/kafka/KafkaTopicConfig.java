@@ -15,4 +15,12 @@ public class KafkaTopicConfig {
                 .replicas(1)
                 .build();
     }
+
+    @Bean
+    public NewTopic authUserSnapshotTopic() {
+        return TopicBuilder.name("auth.user.snapshot")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
 }

@@ -1,0 +1,11 @@
+## api-gateway
+   2903 Route null failed: io.github.resilience4j.bulkhead.BulkheadFullException: Bulkhead 'catalog-service' is full and does not permit further calls
+   2782 Route null failed: io.github.resilience4j.circuitbreaker.CallNotPermittedException: CircuitBreaker 'catalog-service' is OPEN and does not permit further calls
+    212 Route null failed: io.github.resilience4j.circuitbreaker.CallNotPermittedException: CircuitBreaker 'catalog-service' is HALF_OPEN and does not permit further ca
+    115 Route null failed: org.springframework.web.client.ResourceAccessException: I/O error on GET request for \
+      6 Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception
+## catalog-service
+      2 auth-service lookup failed (org.springframework.web.client.RestClientException: Error while extracting response for type [java.util.List<com.epam.java.specializ
+## auth-service
+restarts before: api-gateway-79c55bd444-mf5kw=3 auth-service-75fcc7d548-fcglc=1 catalog-service-68c8d9f8b7-ss62w=1 
+restarts after : api-gateway-79c55bd444-mf5kw=3 auth-service-75fcc7d548-fcglc=1 catalog-service-68c8d9f8b7-ss62w=1 

@@ -1,8 +1,11 @@
+import com.google.protobuf.gradle.id
+
 plugins {
     java
     id("org.springframework.boot") version "4.1.1"
     id("io.spring.dependency-management") version "1.1.7"
     id("org.openapi.generator") version "7.25.0"
+    id("com.google.protobuf") version "0.9.5"
 }
 
 group = "com.epam.java.specialization"
@@ -28,6 +31,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-kafka")
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-grpc-server")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
@@ -42,8 +46,11 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-starter-kafka-test")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    testImplementation("org.springframework.boot:spring-boot-starter-grpc-server-test")
     testImplementation("org.springframework.boot:spring-boot-micrometer-tracing-test")
     testImplementation("org.wiremock:wiremock-standalone:3.13.2")
+    // Consumer-driven contract tests (Pact): the consumer tests write pacts/catalog-service-auth-service.json
+    testImplementation("au.com.dius.pact.consumer:junit5:4.7.7")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
@@ -55,6 +62,18 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Pact files go to <repo>/pacts, where the provider (auth-service) verification reads them from.
+    systemProperty("pact.rootDir", "$rootDir/../pacts")
+    systemProperty("pact.writer.overwrite", "true")
+}
+
+// ./gradlew contractTest: only the consumer contract tests (writes the pact file).
+tasks.register<Test>("contractTest") {
+    description = "Runs the Pact consumer tests and writes the pact file to ../pacts"
+    group = "verification"
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    useJUnitPlatform { includeTags("contract") }
 }
 
 // MapStruct mappers are Spring beans, and a target property left unmapped is a compile error.
@@ -87,7 +106,13 @@ openApiGenerate {
     modelPackage.set("com.epam.java.specialization.trackservice.api.dto")
     modelNameSuffix.set("Dto")
     typeMappings.set(stringUris)
-    configOptions.set(springOptions + mapOf("interfaceOnly" to "true", "skipDefaultInterface" to "false"))
+    // Every public operation is implemented, so no 501 default methods (api-contracts/README.md).
+    // containerDefaultToNull: an omitted optional list stays null, so PATCH bodies without genreSlugs pass @Size(min = 1).
+    configOptions.set(springOptions + mapOf(
+        "interfaceOnly" to "true",
+        "skipDefaultInterface" to "true",
+        "containerDefaultToNull" to "true",
+    ))
 }
 
 val openApiGenerateInternal by tasks.registering(org.openapitools.generator.gradle.plugin.tasks.GenerateTask::class) {
@@ -146,4 +171,26 @@ sourceSets.main {
     java.srcDir(layout.buildDirectory.dir("generated/auth-client/src/main/java"))
     java.srcDir(layout.buildDirectory.dir("generated/events/src/main/java"))
 }
+
+// gRPC: Java classes generated from the shared contract api-contracts/catalog-service/grpc/*.proto into build/.
+// protoc and the grpc-java plugin use the versions managed by the Spring Boot BOM, the same as the runtime jars.
+val protobufVersion = dependencyManagement.importedProperties["protobuf-java.version"]
+val grpcVersion = dependencyManagement.importedProperties["grpc-java.version"]
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:$protobufVersion" }
+    plugins {
+        id("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion" }
+    }
+    generateProtoTasks {
+        all().configureEach {
+            plugins { maybeCreate("grpc").option("@generated=omit") }
+        }
+    }
+}
+
+sourceSets.main {
+    proto { srcDir("$rootDir/../api-contracts/catalog-service/grpc") }
+}
+
 tasks.compileJava { dependsOn(tasks.openApiGenerate, openApiGenerateInternal, openApiGenerateAuthClient, openApiGenerateEvents) }

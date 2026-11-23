@@ -1,0 +1,43 @@
+/* Design tokens. Day mode is the default; [data-theme='night'] swaps the surfaces and text, accents stay.
+   Brief colours are used for fills, borders, shadows, decorations and large VT323 text. Small text uses the
+   "-ink" variants, which reach WCAG AA (4.5:1) on the surfaces (see src/styles/contrast.test.ts). */
+:root {
+  --bg: #fce4f2;
+  --surface: #ffffff;
+  --text: #3d2a5c;
+  --text-2: #8c7aa8;          /* brief value: decorative / large text only */
+  --text-2-ink: #6e5c8c;      /* small secondary text */
+  --border-color: #3d2a5c;
+  --border: 2px solid var(--border-color);
+
+  --purple: #b967ff;
+  --cyan: #01cdfe;
+  --pink: #ff71ce;
+  --mint: #05ffa1;
+  --deep: #3d2a5c;
+  --on-accent: #1a1030;        /* text on purple / pink / cyan fills */
+  --accent-ink: #7a2fd0;       /* links and active items as small text */
+
+  --shadow: 4px 4px 0 var(--cyan);
+  --shadow-sm: 1px 1px 0 var(--cyan);
+  --radius: 4px;
+
+  --font-pixel: 'VT323', ui-monospace, 'Courier New', monospace;
+  --font-body: 'Rubik', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --header-h: 168px;
+  --player-h: 88px;
+  --sidebar-w: 232px;
+  color-scheme: light;
+}
+
+[data-theme='night'] {
+  --bg: #1a1030;
+  --surface: #2a1b4a;
+  --text: #f5f0ff;
+  --text-2: #b5a6d6;
+  --text-2-ink: #b5a6d6;
+  --border-color: #8f7bb8;
+  --accent-ink: #b967ff;
+  color-scheme: dark;
+}

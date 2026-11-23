@@ -1,0 +1,25 @@
+## api-gateway
+   1632 Rate limit exceeded for ip:X on POST PATH
+    539 Route null failed: io.github.resilience4j.circuitbreaker.CallNotPermittedException: CircuitBreaker 'auth-service' is OPEN and does not permit further calls
+    381 Route null failed: io.github.resilience4j.circuitbreaker.CallNotPermittedException: CircuitBreaker 'auth-service' is HALF_OPEN and does not permit further calls
+    123 Route null failed: io.github.resilience4j.bulkhead.BulkheadFullException: Bulkhead 'auth-service' is full and does not permit further calls
+    103 Route null failed: org.springframework.web.client.ResourceAccessException: I/O error on POST request for \
+## catalog-service
+## auth-service
+     33 Unexpected error
+     33 HHH000247: ErrorCode: 0, SQLState: null
+      1 HikariPool-1 - Connection is not available, request timed out after 30505ms (total=10, active=10, idle=0, waiting=20)
+      1 HikariPool-1 - Connection is not available, request timed out after 30316ms (total=10, active=10, idle=0, waiting=21)
+      1 HikariPool-1 - Connection is not available, request timed out after 30304ms (total=10, active=10, idle=0, waiting=22)
+      1 HikariPool-1 - Connection is not available, request timed out after 30246ms (total=10, active=10, idle=0, waiting=41)
+      1 HikariPool-1 - Connection is not available, request timed out after 30232ms (total=10, active=10, idle=0, waiting=32)
+      1 HikariPool-1 - Connection is not available, request timed out after 30208ms (total=10, active=10, idle=0, waiting=24)
+      1 HikariPool-1 - Connection is not available, request timed out after 30136ms (total=10, active=10, idle=0, waiting=33)
+      1 HikariPool-1 - Connection is not available, request timed out after 30132ms (total=10, active=10, idle=0, waiting=56)
+      1 HikariPool-1 - Connection is not available, request timed out after 30126ms (total=10, active=10, idle=0, waiting=10)
+      1 HikariPool-1 - Connection is not available, request timed out after 30124ms (total=10, active=10, idle=0, waiting=15)
+      1 HikariPool-1 - Connection is not available, request timed out after 30120ms (total=10, active=10, idle=0, waiting=21)
+      1 HikariPool-1 - Connection is not available, request timed out after 30113ms (total=10, active=10, idle=0, waiting=35)
+      1 HikariPool-1 - Connection is not available, request timed out after 30098ms (total=10, active=10, idle=0, waiting=17)
+restarts before: api-gateway-79c55bd444-mf5kw=3 auth-service-75fcc7d548-fcglc=1 catalog-service-68c8d9f8b7-ss62w=1 
+restarts after : api-gateway-79c55bd444-mf5kw=3 auth-service-75fcc7d548-fcglc=1 catalog-service-68c8d9f8b7-ss62w=1 

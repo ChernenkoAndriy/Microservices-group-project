@@ -1,6 +1,8 @@
 package com.epam.java.specialization.trackservice.mapper;
 
+import com.epam.java.specialization.trackservice.api.dto.AlbumRefDto;
 import com.epam.java.specialization.trackservice.api.dto.ArtistRefDto;
+import com.epam.java.specialization.trackservice.model.Album;
 import com.epam.java.specialization.trackservice.api.dto.GenreDto;
 import com.epam.java.specialization.trackservice.api.dto.PageMetadataDto;
 import com.epam.java.specialization.trackservice.api.dto.TrackDto;
@@ -23,8 +25,12 @@ public interface TrackMapper {
      * @param artists names of the artists, loaded from auth-service for the whole page at once
      */
     @Mapping(target = "artist", expression = "java(toArtistRef(track.getArtistId(), artists))")
-    @Mapping(target = "album", ignore = true)
+    @Mapping(target = "album", expression = "java(toAlbumRef(track.getAlbum()))")
     TrackDto toDto(Track track, @Context ArtistProfiles artists);
+
+    default AlbumRefDto toAlbumRef(Album album) {
+        return album == null ? null : new AlbumRefDto(album.getId(), album.getTitle());
+    }
 
     default TrackPageDto toPage(Page<Track> page, ArtistProfiles artists) {
         return new TrackPageDto(page.map(track -> toDto(track, artists)).getContent(), toPageMetadata(page));
