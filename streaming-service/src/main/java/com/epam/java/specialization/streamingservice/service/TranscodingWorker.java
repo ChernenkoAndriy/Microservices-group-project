@@ -65,6 +65,11 @@ public class TranscodingWorker {
             simulateWork();
             long sizeBytes = storageService.objectSize(key);
             transcodingService.complete(job.getId(), estimateDurationSeconds(sizeBytes), storageService.storageUrl(key));
+        } catch (InterruptedException e) {
+            // Shutdown while the job runs: mark it failed and keep the interrupt for the scheduler thread.
+            Thread.currentThread().interrupt();
+            span.error(e);
+            transcodingService.fail(job.getId(), "Interrupted");
         } catch (Exception e) {
             log.warn("Could not transcode track id={}", job.getTrackId(), e);
             span.error(e);

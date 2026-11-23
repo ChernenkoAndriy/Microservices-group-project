@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -80,7 +81,7 @@ class AssetReadyTraceTest {
         doAnswer(invocation -> {
             publishTraceId.set(tracer.currentSpan().context().traceId());
             return invocation.callRealMethod();
-        }).when(trackService).publish(eq(trackId), anyInt());
+        }).when(trackService).publish(eq(trackId), anyInt(), any());
 
         String traceId = sendInNewTrace(trackId, event(eventId, trackId, 245));
 

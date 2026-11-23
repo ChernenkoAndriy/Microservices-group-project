@@ -1,4 +1,5 @@
-# Grafana with Tempo, Loki and Prometheus provisioned as data sources. UI: http://<node>:30030, anonymous
+# Grafana with Tempo, Loki and Prometheus provisioned as data sources and the "Spotty" dashboard
+# (grafana-dashboards.yaml). UI: http://<node>:30030, anonymous
 # admin (local demo only). Explore -> Tempo -> open a trace -> span -> "Logs for this span" opens Loki
 # with the logs of that trace; in Loki every line with a trace_id has a "View trace" link back to Tempo.
 #
@@ -112,6 +113,10 @@ spec:
               mountPath: /tmp
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /etc/grafana/dashboards
             - name: data
               mountPath: /var/lib/grafana
           resources:
@@ -133,6 +138,18 @@ spec:
         - name: datasources
           configMap:
             name: grafana-datasources
+        - name: dashboard-provider
+          configMap:
+            name: grafana-dashboards
+            items:
+              - key: dashboards.yaml
+                path: dashboards.yaml
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
+            items:
+              - key: spotty-overview.json
+                path: spotty-overview.json
         - name: data
           emptyDir: {}
 ---

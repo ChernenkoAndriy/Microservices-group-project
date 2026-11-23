@@ -30,8 +30,10 @@ spec:
             matchLabels:
               app: prometheus
 ---
-# Allow specific inter-service HTTP communication:
-# streaming-service makes synchronous HTTP calls to catalog-service (GET /internal/tracks/{id})
+# Synchronous calls into catalog-service, each caller only on the port it uses:
+# - streaming-service: gRPC CatalogInternalService on 9090 (track ownership and playability)
+# - library-service: GET /internal/tracks/{id} on 8082 (a liked / playlisted track must exist)
+# - notification-service: artist lookup on 8082 (follower release emails)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -52,8 +54,21 @@ spec:
       ports:
         - protocol: TCP
           port: 8082
+        - protocol: TCP
+          port: 9090
+    - from:
+        - podSelector:
+            matchLabels:
+              app: library-service
+        - podSelector:
+            matchLabels:
+              app: notification-service
+      ports:
+        - protocol: TCP
+          port: 8082
 ---
-# catalog-service makes synchronous HTTP calls to auth-service (GET /internal/users?ids=) to resolve artist names.
+# catalog-service and library-service make synchronous HTTP calls to auth-service (GET /internal/users?ids=)
+# to resolve artist names.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -71,6 +86,9 @@ spec:
         - podSelector:
             matchLabels:
               app: catalog-service
+        - podSelector:
+            matchLabels:
+              app: library-service
       ports:
         - protocol: TCP
           port: 8081

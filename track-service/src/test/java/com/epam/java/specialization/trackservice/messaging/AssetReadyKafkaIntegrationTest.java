@@ -170,7 +170,7 @@ class AssetReadyKafkaIntegrationTest {
 
         ConsumerRecord<String, String> dead = dltRecordWithKey(unknownTrackId, TIMEOUT).orElseThrow();
         assertThat(header(dead, KafkaHeaders.EXCEPTION_MESSAGE)).contains("does not exist");
-        verify(trackService, times(1)).publish(eq(unknownTrackId), anyInt());
+        verify(trackService, times(1)).publish(eq(unknownTrackId), anyInt(), any());
         assertThat(records(RETRY_TOPICS.getFirst(), String.valueOf(unknownTrackId), Duration.ofSeconds(2))).isEmpty();
     }
 
