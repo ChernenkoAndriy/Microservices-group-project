@@ -52,7 +52,7 @@ outbox:
 clients:
   catalog-base-url: ${CATALOG_SERVICE_URL:http://catalog-service:8082}
   auth-base-url: ${AUTH_SERVICE_URL:http://auth-service:8081}
-  internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
+  internal-token: ${INTERNAL_API_TOKEN}
   connect-timeout: 1s
   read-timeout: 2s
 

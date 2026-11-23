@@ -24,6 +24,8 @@ spec:
                   - auth-service
                   - catalog-service
                   - streaming-service
+                  - library-service
+                  - recommendation-service
                   - notification-service
       ports:
         - protocol: TCP

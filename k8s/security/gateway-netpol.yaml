@@ -27,3 +27,21 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+---
+# NetworkPolicy for Frontend (React + Nginx SPA, NodePort 30300 -> container port 8080)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend
+  labels:
+    app.kubernetes.io/part-of: spotty
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080

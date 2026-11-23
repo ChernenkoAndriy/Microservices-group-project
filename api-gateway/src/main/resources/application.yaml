@@ -135,7 +135,7 @@ logging:
 
 jwt:
   # Must be the same Base64-encoded HMAC key auth-service signs tokens with (same env var as auth-service).
-  secret: ${AUTH_SERVICE_JWT_SECRET:c3BvdHR5LWF1dGgtc2VydmljZS1kZXYtc2VjcmV0LWtleS1jaGFuZ2UtbWUtcGxlYXNl}
+  secret: ${AUTH_SERVICE_JWT_SECRET}
 
 gateway:
   security:

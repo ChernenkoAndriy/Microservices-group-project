@@ -51,7 +51,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5436/spotty_streaming_db}
     username: ${SPRING_DATASOURCE_USERNAME:spotty_streaming_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:your_secure_streaming_password}
+    password: ${SPRING_DATASOURCE_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -94,13 +94,13 @@ transcoding:
 # catalog-service's gRPC API (api-contracts/catalog-service/grpc/catalog_internal.proto): GetTrackInfo before an
 # upload checks that the track exists and belongs to the caller; served streams are reported with ReportPlays.
 catalog-grpc:
-  internal-token: ${INTERNAL_API_TOKEN:dev-internal-token}
+  internal-token: ${INTERNAL_API_TOKEN}
   play-report:
     interval-ms: 5000
 
 # Signed playback tokens (POST /api/v1/streaming/{trackId}/token). HMAC-SHA256 key, at least 32 characters.
 stream-token:
-  secret: ${STREAM_TOKEN_SECRET:dev-stream-token-secret-change-me-please-32+}
+  secret: ${STREAM_TOKEN_SECRET}
   stream-ttl: PT5M
   offline-ttl: PT24H
 
@@ -108,7 +108,7 @@ storage:
   s3:
     endpoint: ${S3_ENDPOINT:http://media-storage:9000}
     access-key: ${S3_ACCESS_KEY:any_user}
-    secret-key: ${S3_SECRET_KEY:any_password}
+    secret-key: ${S3_SECRET_KEY}
     bucket-name: ${S3_BUCKET_NAME:tracks}
 
 logging:

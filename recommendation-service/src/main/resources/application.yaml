@@ -14,7 +14,7 @@ spring:
   datasource:
     url: ${CLICKHOUSE_URL:jdbc:ch:http://recommendation-db:8123/spotty_analytics_db}?compress=0
     username: ${CLICKHOUSE_USER:spotty_clickhouse_user}
-    password: ${CLICKHOUSE_PASSWORD:your_secure_clickhouse_password}
+    password: ${CLICKHOUSE_PASSWORD}
     driver-class-name: com.clickhouse.jdbc.ClickHouseDriver
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}

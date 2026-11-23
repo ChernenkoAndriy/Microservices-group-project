@@ -28,10 +28,10 @@ outbox:
   poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:5000}
 
 internal-api:
-  token: ${INTERNAL_API_TOKEN:dev-internal-token}
+  token: ${INTERNAL_API_TOKEN}
 
 jwt:
-  secret: ${AUTH_SERVICE_JWT_SECRET:c3BvdHR5LWF1dGgtc2VydmljZS1kZXYtc2VjcmV0LWtleS1jaGFuZ2UtbWUtcGxlYXNl}
+  secret: ${AUTH_SERVICE_JWT_SECRET}
   ttl: ${AUTH_SERVICE_JWT_TTL:10m}
   refresh-ttl: ${AUTH_SERVICE_JWT_REFRESH_TTL:30d}
 
