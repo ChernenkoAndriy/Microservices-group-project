@@ -18,8 +18,22 @@ spec:
         prometheus.io/port: "8083"
         prometheus.io/path: /actuator/prometheus
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: streaming-service
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: streaming-service:latest
           imagePullPolicy: IfNotPresent
           ports:
@@ -120,6 +134,14 @@ spec:
               port: http
             periodSeconds: 10
             failureThreshold: 2
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # Tomcat work files and multipart uploads (max 50MB per file).
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
 ---
 apiVersion: v1
 kind: Service

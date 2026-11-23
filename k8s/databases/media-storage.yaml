@@ -27,9 +27,24 @@ spec:
       labels:
         app: media-storage
     spec:
+      # uid/gid 1000 = user seaweed in the image.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: seaweedfs
-          image: chrislusf/seaweedfs:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          image: chrislusf/seaweedfs:4.50
           args:
             - server
             - -dir=/data
@@ -57,9 +72,14 @@ spec:
               cpu: 500m
               memory: 512Mi
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: minio-storage
               mountPath: /data
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
         - name: minio-storage
           persistentVolumeClaim:
             claimName: media-storage-pvc

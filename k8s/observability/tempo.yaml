@@ -59,10 +59,22 @@ spec:
       labels:
         app: tempo
     spec:
+      automountServiceAccountToken: false
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
         fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: tempo
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: grafana/tempo:2.8.2
           imagePullPolicy: IfNotPresent
           args:
@@ -75,6 +87,8 @@ spec:
             - containerPort: 4318
               name: otlp-http
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: config
               mountPath: /etc/tempo
             - name: data
@@ -93,6 +107,9 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
         - name: config
           configMap:
             name: tempo-config

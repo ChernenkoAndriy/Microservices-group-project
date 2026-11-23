@@ -65,10 +65,22 @@ spec:
       labels:
         app: loki
     spec:
+      automountServiceAccountToken: false
       securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
         fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: loki
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: grafana/loki:3.5.3
           imagePullPolicy: IfNotPresent
           args:
@@ -77,6 +89,8 @@ spec:
             - containerPort: 3100
               name: http
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
             - name: config
               mountPath: /etc/loki
             - name: data
@@ -95,6 +109,9 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
         - name: config
           configMap:
             name: loki-config

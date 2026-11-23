@@ -18,8 +18,22 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/path: /actuator/prometheus
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api-gateway
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: api-gateway:latest
           imagePullPolicy: IfNotPresent
           ports:
@@ -111,6 +125,13 @@ spec:
               port: 8080
             periodSeconds: 10
             failureThreshold: 2
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
 ---
 apiVersion: v1
 kind: Service

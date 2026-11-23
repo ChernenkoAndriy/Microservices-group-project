@@ -38,8 +38,22 @@ spec:
       labels:
         app: alertmanager
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: alertmanager
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: prom/alertmanager:v0.28.1
           imagePullPolicy: IfNotPresent
           args:
@@ -146,8 +160,22 @@ spec:
       labels:
         app: webhook-receiver
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: webhook-receiver
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
           image: python:3.12-alpine
           imagePullPolicy: IfNotPresent
           command: ["python", "-u", "/app/server.py"]

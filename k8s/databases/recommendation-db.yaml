@@ -27,9 +27,24 @@ spec:
       labels:
         app: recommendation-db
     spec:
+      # uid/gid 101 = user clickhouse in the image. The entrypoint writes the CLICKHOUSE_USER config into users.d.
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: clickhouse
-          image: clickhouse/clickhouse-server:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          image: clickhouse/clickhouse-server:26.10.3.7
           ports:
             - containerPort: 8123
               name: http
@@ -73,9 +88,24 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
           volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: logs
+              mountPath: /var/log/clickhouse-server
+            - name: users-d
+              mountPath: /etc/clickhouse-server/users.d
             - name: recommendation-db-storage
               mountPath: /var/lib/clickhouse
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: logs
+          emptyDir:
+            sizeLimit: 256Mi
+        - name: users-d
+          emptyDir:
+            sizeLimit: 1Mi
         - name: recommendation-db-storage
           persistentVolumeClaim:
             claimName: recommendation-db-pvc
