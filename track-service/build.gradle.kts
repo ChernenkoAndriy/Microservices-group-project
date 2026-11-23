@@ -51,6 +51,14 @@ dependencies {
     testImplementation("org.wiremock:wiremock-standalone:3.13.2")
     // Consumer-driven contract tests (Pact): the consumer tests write pacts/catalog-service-auth-service.json
     testImplementation("au.com.dius.pact.consumer:junit5:4.7.7")
+    // Real PostgreSQL and Kafka in Docker for the outbox test, Toxiproxy for the network fault test.
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-postgresql")
+    testImplementation("org.testcontainers:testcontainers-kafka")
+    testImplementation("org.testcontainers:testcontainers-toxiproxy")
+    testImplementation("eu.rekawek.toxiproxy:toxiproxy-java:2.1.7")
+    testImplementation("org.awaitility:awaitility")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 

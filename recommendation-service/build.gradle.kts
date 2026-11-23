@@ -32,6 +32,10 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-kafka")
     implementation("com.clickhouse:clickhouse-jdbc:0.6.3:all")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    // A real ClickHouse in Docker for the tests that need the database.
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-clickhouse")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

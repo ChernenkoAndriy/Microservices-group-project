@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.SocketTimeoutException;
@@ -27,7 +28,9 @@ public class FallbackController {
 
     private static final Logger log = LoggerFactory.getLogger(FallbackController.class);
 
-    @RequestMapping(PATH)
+    // The gateway forwards the failed request as it is, so the fallback answers every method a route can carry.
+    @RequestMapping(path = PATH, method = {RequestMethod.GET, RequestMethod.HEAD, RequestMethod.POST, RequestMethod.PUT,
+            RequestMethod.PATCH, RequestMethod.DELETE, RequestMethod.OPTIONS})
     public ResponseEntity<ProblemDetail> fallback(HttpServletRequest request) {
         Throwable error = (Throwable) request.getAttribute(MvcUtils.CIRCUITBREAKER_EXECUTION_EXCEPTION_ATTR);
         Object route = request.getAttribute(MvcUtils.GATEWAY_ROUTE_ID_ATTR);

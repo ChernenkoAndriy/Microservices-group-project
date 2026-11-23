@@ -21,7 +21,12 @@ import java.net.URI;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /*
+     * CSRF protection is off on purpose (java:S4502): the API is stateless, it has no session or cookie that a browser
+     * would send by itself. Every request is authenticated by the JWT the gateway checks and turns into X-User-* headers.
+     */
     @Bean
+    @SuppressWarnings("java:S4502")
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JsonMapper jsonMapper) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)

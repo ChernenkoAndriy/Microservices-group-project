@@ -7,3 +7,6 @@ k8s-local/
 *.log
 hs_err_pid*
 replay_pid*
+
+# SonarQube scanner output
+.sonar/

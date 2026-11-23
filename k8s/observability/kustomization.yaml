@@ -6,4 +6,5 @@ resources:
   - otel-collector-logs.yaml
   - tempo.yaml
   - loki.yaml
+  - grafana-dashboards.yaml
   - grafana.yaml
